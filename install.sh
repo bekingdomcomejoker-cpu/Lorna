@@ -76,7 +76,7 @@ if ! grep -q "$MARKER" "$BASHRC" 2>/dev/null; then
 # Puts the correct (large, full-build) llama-cli binary at front of PATH
 # to override any federation symlinks
 export PATH="/data/data/com.termux/files/usr/bin:$HOME/llama.cpp/build/bin:$HOME/.local/bin:$PATH"
-alias lorna='bash /data/data/com.termux/files/home/lorna-mobile-llm/lorna.sh'
+alias lorna='bash /data/data/com.termux/files/home/lorna-mobile-llm-fixed/lorna.sh'
 BASHRC_BLOCK
   ok "PATH fixed in ~/.bashrc"
   ok "Alias 'lorna' added"

@@ -11,7 +11,8 @@ GOLD='\033[0;33m'  NC='\033[0m'
 
 # ─── TMPDIR SAFETY ──────────────────────────────────────────
 LORNA_TMP="${TMPDIR:-/data/data/com.termux/files/usr/tmp}/lorna"
-mkdir -p "$LORNA_TMP"
+# Explicitly create the directory whenever core.sh is sourced
+mkdir -p "$LORNA_TMP" 2>/dev/null || true
 
 # ─── LOG DIR (cached — not recreated on every call) ──────────
 LORNA_LOG_DIR="$HOME/lorna_logs"

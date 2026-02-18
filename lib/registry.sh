@@ -124,7 +124,7 @@ get_top_n_paths() {
 # stdout, which is the only thing captured by $().
 # Previously ALL output was captured → user saw blank screen.
 build_model_menu() {
-  mkdir -p "$LORNA_TMP"
+  mkdir -p "$(dirname "$LORNA_TMP/menu_models")"
   rm -f "$LORNA_TMP/menu_models"
 
   echo -e "  ${CYAN}${BOLD}Found Models:${NC}" >&2
@@ -156,6 +156,7 @@ build_model_menu() {
 # ─── SELECT MODEL FROM MENU BY NUMBER ───────────────────────
 select_model() {
   local num="$1"
+  [[ -f "$LORNA_TMP/menu_models" ]] || return 1
   sed -n "${num}p" "$LORNA_TMP/menu_models" 2>/dev/null
 }
 

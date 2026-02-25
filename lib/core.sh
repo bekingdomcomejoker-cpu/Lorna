@@ -47,6 +47,7 @@ lorna_banner() {
 detect_llama_binary() {
   local candidates=(
     "/home/ubuntu/llama-cli-mock.sh"
+    "/data/data/com.termux/files/home/SOVEREIGN_HOME/termux-forge/llama.cpp/build/bin/llama-cli"
     "/data/data/com.termux/files/home/llama.cpp/build/bin/llama-cli"
     "$HOME/llama.cpp/build/bin/llama-cli"
     "$HOME/federation/llama.cpp/build/bin/llama-cli"

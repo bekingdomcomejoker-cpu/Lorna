@@ -82,7 +82,7 @@ show_menu() {
   echo -e "  ${BOLD}14${NC}  distill      — LLM Tokenizer & Distillation"
   echo -e "  ${BOLD}15${NC}  agent2       — Lorna2 Agent (chat + local tools)"
   echo ""
-  echo -e "  ${DIM}q/quit — exit  |  Direct: lab, tune quick, preset deepseek_r1_fast, agent2${NC}"
+  echo -e "  ${DIM}q/quit or /exit — exit  |  Direct: lab, tune quick, preset deepseek_r1_fast, agent2${NC}"
   echo ""
 }
 
@@ -205,7 +205,7 @@ HELP
           13) route top10 ;;
           14) route distill ;;
           15) route agent2 ;;
-          q|quit|exit|"")
+          q|quit|exit|/quit|/exit|"")
             echo ""
             ok "Goodbye."
             echo ""
@@ -220,8 +220,17 @@ HELP
 
         echo ""
         echo -e "${DIM}  ──────────────────────────────────────────${NC}"
-        read -rp "  Press Enter to return to menu (q to quit)... " back
-        [[ "${back,,}" == "q" ]] && echo "" && ok "Goodbye." && echo "" && exit 0
+        # A route may be followed immediately by /exit in scripted or
+        # interactive use; do not require a separate menu cycle to quit.
+        read -rp "  Press Enter to return to menu (/exit to quit)... " back
+        case "${back,,}" in
+          q|quit|exit|/quit|/exit)
+            echo ""
+            ok "Goodbye."
+            echo ""
+            exit 0
+            ;;
+        esac
       done
       ;;
     *)

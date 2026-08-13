@@ -1,0 +1,35 @@
+# Local backups and editor artifacts
+*.bak
+*~
+
+# Device-local Lorna2 state and configuration
+.lorna_v2/
+.lorna_memory/
+
+# Environment files and credentials
+.env
+.env.*
+*.pem
+*.key
+credentials*
+*token*
+
+# Model weights and local model directories
+models/
+*.gguf
+*.bin
+*.safetensors
+
+# Python and Node generated files
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+node_modules/
+
+# Local logs, databases, and benchmark output
+*.log
+*.db
+*.sqlite
+*.sqlite3
+lorna_bench_results.txt

@@ -137,6 +137,13 @@ lorna health            # Full system diagnostics
 lorna top10             # Speed reference table
 ```
 
+### Local Agent Mode
+```
+lorna agent2            # Start the local Ollama-backed Lorna2 agent
+```
+
+Agent mode adds `fast`, `deep`, `code`, and `agent` nodes to an interactive local console. It requires Python, the Ollama Python package, a local Ollama service, and locally registered model aliases. Read [docs/agent-mode.md](docs/agent-mode.md) before using it.
+
 ---
 
 ## 💾 Persistent Memory
@@ -180,6 +187,13 @@ lorna-mobile-llm/
 │   ├── tune.sh           ← Parameter tuning (quick/full)
 │   ├── bench.sh          ← Simple benchmarking
 │   └── health.sh         ← System diagnostics
+│
+├── agents/
+│   ├── lorna_v2.py       ← Local Ollama-backed agent console
+│   └── requirements.txt  ← Python dependency list
+│
+├── docs/
+│   └── agent-mode.md     ← Agent setup and local-only safety guidance
 │
 ├── configs/              ← Per-model overrides
 └── memory/               ← Saved sessions

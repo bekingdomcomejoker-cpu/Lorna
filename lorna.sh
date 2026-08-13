@@ -9,12 +9,42 @@ source "$LORNA_DIR/lib/registry.sh"
 source "$LORNA_DIR/lib/presets.sh" 2>/dev/null || true
 source "$LORNA_DIR/lib/persist.sh" 2>/dev/null || true
 
+LORNA2_AGENT="$LORNA_DIR/agents/lorna_v2.py"
+
 if [[ -z "$LLAMA_BIN" || ! -x "$LLAMA_BIN" ]]; then
-  echo ""
-  echo -e "${RED}  ✗ llama-cli binary not found.${NC}"
-  echo "  Run: bash $LORNA_DIR/install.sh"
-  exit 1
+  case "${1:-menu}" in
+    agent2|agent|lorna2)
+      # Agent mode uses local Ollama rather than llama-cli.
+      ;;
+    *)
+      echo ""
+      echo -e "${RED}  ✗ llama-cli binary not found.${NC}"
+      echo "  Run: bash $LORNA_DIR/install.sh"
+      exit 1
+      ;;
+  esac
 fi
+
+run_lorna2_agent() {
+  if [[ ! -f "$LORNA2_AGENT" ]]; then
+    err "Lorna2 agent source not found: $LORNA2_AGENT"
+    return 1
+  fi
+
+  if ! command -v python3 >/dev/null 2>&1; then
+    err "python3 is required for Lorna2 Agent"
+    return 1
+  fi
+
+  if ! python3 -c 'import ollama' >/dev/null 2>&1; then
+    err "Python package 'ollama' is required. Install: pip install -r agents/requirements.txt"
+    return 1
+  fi
+
+  clear
+  info "Starting Lorna2 Agent (local interactive mode)"
+  python3 "$LORNA2_AGENT"
+}
 
 show_menu() {
   lorna_banner
@@ -50,8 +80,9 @@ show_menu() {
   echo -e "  ${BOLD}12${NC}  health       — System diagnostics"
   echo -e "  ${BOLD}13${NC}  top10        — Speed reference"
   echo -e "  ${BOLD}14${NC}  distill      — LLM Tokenizer & Distillation"
+  echo -e "  ${BOLD}15${NC}  agent2       — Lorna2 Agent (chat + local tools)"
   echo ""
-  echo -e "  ${DIM}q/quit — exit  |  Direct: lab, tune quick, preset deepseek_r1_fast${NC}"
+  echo -e "  ${DIM}q/quit — exit  |  Direct: lab, tune quick, preset deepseek_r1_fast, agent2${NC}"
   echo ""
 }
 
@@ -113,6 +144,9 @@ route() {
     distill|tokenize)
       bash "$LORNA_DIR/tools/distill.sh"
       ;;
+    agent2|agent|lorna2)
+      run_lorna2_agent
+      ;;
     help|--help|-h)
       lorna_banner
       cat << HELP
@@ -135,6 +169,7 @@ ${BOLD}Tools:${NC}
   lorna bench [mode]      → benchmark models
   lorna health            → full diagnostics
   lorna top10             → speed reference
+  lorna agent2            → Lorna2 Agent (chat + local tools)
 
 ${BOLD}Verified Configs (DSBench.pdf):${NC}
   DeepSeek R1:  5.0 t/s @ 4096ctx/32b/4t/0.3temp
@@ -148,7 +183,7 @@ HELP
     menu|"")
       while true; do
         show_menu
-        read -rp "  Select [1-13 or command]: " input
+        read -rp "  Select [1-15 or command]: " input
         echo ""
 
         local parsed_cmd parsed_arg
@@ -169,6 +204,7 @@ HELP
           12) route health ;;
           13) route top10 ;;
           14) route distill ;;
+          15) route agent2 ;;
           q|quit|exit|"")
             echo ""
             ok "Goodbye."

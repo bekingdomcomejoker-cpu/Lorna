@@ -162,10 +162,12 @@ run_tune() {
           if [[ "$exit_code" -eq 0 ]]; then
             prompt_tps=$(cat "$LORNA_TMP/tune_stdout.txt" "$LORNA_TMP/tune_stderr.txt" 2>/dev/null \
               | grep -ioE 'Prompt:[[:space:]]*[0-9]+(\.[0-9]+)?[[:space:]]*t/s|prompt eval time.*[0-9]+\.[0-9]+[[:space:]]+tokens per second' \
-              | grep -oE '[0-9]+(\.[0-9]+)?' | tail -1 || echo "?")
+              | grep -oE '[0-9]+(\.[0-9]+)?' | tail -1)
             gen_tps=$(cat "$LORNA_TMP/tune_stdout.txt" "$LORNA_TMP/tune_stderr.txt" 2>/dev/null \
               | grep -ioE 'Generation:[[:space:]]*[0-9]+(\.[0-9]+)?[[:space:]]*t/s|eval time.*[0-9]+\.[0-9]+[[:space:]]+tokens per second' \
-              | grep -oE '[0-9]+(\.[0-9]+)?' | tail -1 || echo "?")
+              | grep -oE '[0-9]+(\.[0-9]+)?' | tail -1)
+            [[ -z "$prompt_tps" ]] && prompt_tps="?"
+            [[ -z "$gen_tps" ]] && gen_tps="?"
             status="OK"
             if [[ "$gen_tps" == "?" && "$elapsed_ms" -gt 0 ]]; then
               gen_tps=$(awk -v tokens=100 -v ms="$elapsed_ms" 'BEGIN {printf "%.2f", tokens * 1000 / ms}')

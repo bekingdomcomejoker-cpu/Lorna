@@ -66,26 +66,50 @@ bench_model() {
   local class
   class=$(model_load_class "$model")
 
+  # Always emit six fields and persist the row, including a skip.  This keeps
+  # the terminal status and the saved leaderboard consistent.
   if [[ "$class" == "UNSAFE" ]]; then
-    echo "${name}|${size_mb}|?|?|SKIPPED"
+    local skipped_line="${name}|${size_mb}|?|?|0ms|SKIPPED"
+    echo "$skipped_line"
+    echo "$skipped_line" >> "$RESULTS_FILE"
     return 0
   fi
 
   echo "$BENCH_PROMPT" > "$TMP_DIR/bench_prompt.txt"
 
-  local start_ms end_ms
+  # Benchmark with the same conservative tier settings used by Lorna itself.
+  # Calling llama-cli with its defaults can allocate an oversized context on a
+  # 4 GB device, leaving the benchmark on "Loading model..." or causing OOM.
+  read -r ctx batch threads _ <<< "$(get_model_tier "$model")"
+  probe_binary_flags
+  local extra_flags=()
+  [[ "$_LORNA_HAS_NO_WARMUP" -eq 1 ]] && extra_flags+=(--no-warmup)
+  [[ "$_LORNA_HAS_CACHE_TYPE" -eq 1 ]] && extra_flags+=(--cache-type-k q4_0 --cache-type-v q4_0)
+
+  local start_ms end_ms llama_status
   start_ms=$(date +%s%3N)
-
   "$LLAMA_BIN" \
-    -m  "$model"                  \
-    -f  "$TMP_DIR/bench_prompt.txt" \
-    -n  "$BENCH_TOKENS"           \
-    --temp 0.1                    \
-    --no-display-prompt           \
+    -m "$model" \
+    -f "$TMP_DIR/bench_prompt.txt" \
+    -n "$BENCH_TOKENS" \
+    -c "$ctx" \
+    -t "$threads" \
+    -b "$batch" \
+    --temp 0.1 \
+    --no-display-prompt \
+    "${extra_flags[@]}" \
     2>"$TMP_DIR/bench_stderr.txt" > "$TMP_DIR/bench_stdout.txt" < /dev/null
-
+  llama_status=$?
   end_ms=$(date +%s%3N)
   local elapsed_ms=$(( end_ms - start_ms ))
+
+  if (( llama_status != 0 )); then
+    local error_line="${name}|${size_mb}|?|?|${elapsed_ms}ms|ERROR(${llama_status})"
+    echo "$error_line"
+    echo "$error_line" >> "$RESULTS_FILE"
+    cleanup_llama
+    return 0
+  fi
 
   local tps_result
   tps_result=$(parse_tps_from_stderr "$TMP_DIR/bench_stderr.txt")
@@ -146,10 +170,10 @@ run_bench() {
       done < <(get_top_n_paths 10)
       ;;
     safe)
+      # "safe" means safe under the device's current RAM and swap pressure,
+      # not merely smaller than an arbitrary file-size cutoff.
       while IFS= read -r path; do
-        local mb
-        mb=$(du -m "$path" 2>/dev/null | cut -f1)
-        (( mb <= 1200 )) && models+=("$path")
+        [[ "$(model_load_class "$path")" == "SAFE" ]] && models+=("$path")
       done < <(scan_all_models)
       ;;
     all)
@@ -164,7 +188,11 @@ run_bench() {
   esac
 
   if (( ${#models[@]} == 0 )); then
-    err "No models found."
+    if [[ "$mode" == "safe" ]]; then
+      err "No models are SAFE with the current RAM and swap pressure. Free memory, then retry the safe benchmark."
+    else
+      err "No models found."
+    fi
     return 1
   fi
 
@@ -192,7 +220,7 @@ run_bench() {
     IFS='|' read -r rname rmb rprompt rgen relapsed rclass <<< "$result"
     local cc=$GREEN
     [[ "$rclass" == "CAUTION" || "$rclass" == "RISKY" ]] && cc=$YELLOW
-    [[ "$rclass" == "SKIPPED" || "$rclass" == "UNSAFE" ]] && cc=$RED
+    [[ "$rclass" == "SKIPPED" || "$rclass" == "UNSAFE" || "$rclass" == ERROR* ]] && cc=$RED
     printf "${cc}gen=%-6s${NC}  prompt=%-6s  %s\n" "$rgen" "$rprompt" "$relapsed"
   done
 

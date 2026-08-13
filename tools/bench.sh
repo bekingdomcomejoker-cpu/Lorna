@@ -22,8 +22,34 @@ BENCH_TOKENS=32
 # has a hard deadline, so no model can remain waiting for a follow-up reply.
 BENCH_EXIT_INPUT="/exit"
 BENCH_TIMEOUT_SECONDS="${LORNA_BENCH_TIMEOUT_SECONDS:-180}"
+BENCH_LOCK_DIR="$LORNA_TMP/bench.lock"
 
 mkdir -p "$TMP_DIR"
+
+# ─── SINGLE-RUN LOCK ─────────────────────────────────────────
+# Concurrent benchmarks would compete for the same device memory, temporary
+# files, and leaderboard.  Keep exactly one active run and recover stale locks.
+acquire_bench_lock() {
+  if mkdir "$BENCH_LOCK_DIR" 2>/dev/null; then
+    printf '%s\n' "$$" > "$BENCH_LOCK_DIR/pid"
+    return 0
+  fi
+
+  local owner=""
+  [[ -f "$BENCH_LOCK_DIR/pid" ]] && owner=$(cat "$BENCH_LOCK_DIR/pid" 2>/dev/null)
+  if [[ "$owner" =~ ^[0-9]+$ ]] && kill -0 "$owner" 2>/dev/null; then
+    err "A Lorna benchmark is already running (PID $owner). Wait for it to finish."
+    return 1
+  fi
+
+  rm -rf "$BENCH_LOCK_DIR"
+  mkdir "$BENCH_LOCK_DIR" || return 1
+  printf '%s\n' "$$" > "$BENCH_LOCK_DIR/pid"
+}
+
+release_bench_lock() {
+  rm -rf "$BENCH_LOCK_DIR"
+}
 
 # ─── PARSE t/s FROM llama.cpp STDERR ────────────────────────
 # BUG FIXED: Correct patterns for actual llama.cpp output format.
@@ -156,6 +182,9 @@ show_results_table() {
 # ─── MAIN ───────────────────────────────────────────────────
 run_bench() {
   local mode="${1:-safe}"
+
+  acquire_bench_lock || return 1
+  trap release_bench_lock EXIT INT TERM
 
   lorna_banner
   echo -e "  ${BOLD}MODE: BENCHMARK — ${mode}${NC}"

@@ -23,6 +23,52 @@ CWD = "/sdcard"
 if not os.path.exists(CWD):
     CWD = os.path.expanduser("~")
 
+# ===== Integrated Drive Skills =====
+SKILL_DIRECTORY = os.path.join(os.path.dirname(os.path.abspath(__file__)), "drive_skills")
+INTEGRATED_SKILLS = {
+    "manus-api": {
+        "title": "Manus API Integration Guide",
+        "path": "SKILL_1_manus_api.md",
+    },
+    "manus-config": {
+        "title": "Manus Connector and Schedule Guide",
+        "path": "SKILL_2_manus_config.md",
+    },
+    "mikrotik-hotspot-branding": {
+        "title": "MikroTik Hotspot Branding",
+        "path": "SKILL_3_mikrotik_hotspot_branding.md",
+    },
+    "skill-registry": {
+        "title": "Repo 120 Skill Registry Source",
+        "path": "skill_registry.py",
+    },
+}
+ACTIVE_SKILL = None
+
+def skill_file_path(skill_id):
+    item = INTEGRATED_SKILLS.get(skill_id)
+    if item is None:
+        return None
+    return os.path.join(SKILL_DIRECTORY, item["path"])
+
+def list_integrated_skills():
+    lines = ["Integrated Drive skills:"]
+    for skill_id, item in INTEGRATED_SKILLS.items():
+        marker = " [ACTIVE]" if skill_id == ACTIVE_SKILL else ""
+        lines.append(f"  {skill_id:<28} {item['title']}{marker}")
+    lines.append("Use /skill <id> to view, /skill use <id> to activate, or /skill off to clear.")
+    return "\n".join(lines)
+
+def read_integrated_skill(skill_id):
+    path = skill_file_path(skill_id)
+    if path is None:
+        return f"Unknown skill: {skill_id}. Use /skills to list available skills."
+    try:
+        with open(path, "r", encoding="utf-8") as handle:
+            return handle.read()
+    except Exception as exc:
+        return f"Error reading integrated skill {skill_id}: {exc}"
+
 # ===== Tool Functions =====
 def run_cmd(cmd):
     try:
@@ -37,10 +83,30 @@ def expand_path(path):
     return os.path.join(CWD, path)
 
 def execute_tool(user_input):
-    global CWD
+    global CWD, ACTIVE_SKILL
     parts = user_input.strip().split(maxsplit=1)
     cmd = parts[0].lower() if parts else ""
     arg = parts[1] if len(parts) > 1 else ""
+
+    # Integrated Drive skills
+    if cmd == "skills":
+        return list_integrated_skills()
+    elif cmd == "skill":
+        if not arg:
+            return "Usage: skill <id> | skill use <id> | skill off"
+        args = arg.split(maxsplit=1)
+        if args[0].lower() == "use":
+            if len(args) < 2:
+                return "Usage: skill use <id>"
+            skill_id = args[1].strip().lower()
+            if skill_id not in INTEGRATED_SKILLS:
+                return f"Unknown skill: {skill_id}. Use skills to list available skills."
+            ACTIVE_SKILL = skill_id
+            return f"Activated skill: {skill_id}"
+        if args[0].lower() == "off":
+            ACTIVE_SKILL = None
+            return "Cleared active skill."
+        return read_integrated_skill(args[0].lower())
 
     # Navigation
     if cmd == "ls":
@@ -178,16 +244,24 @@ def execute_tool(user_input):
 def chat_with_node(user_input):
     model = MODELS[CURRENT_NODE]
     try:
-        resp = ollama.chat(model=model, messages=[{"role": "user", "content": user_input}])
+        prompt = user_input
+        if ACTIVE_SKILL:
+            prompt = (
+                f"Use the following active skill as your operating context. "
+                f"Skill ID: {ACTIVE_SKILL}\n\n"
+                f"{read_integrated_skill(ACTIVE_SKILL)}\n\n"
+                f"User request: {user_input}"
+            )
+        resp = ollama.chat(model=model, messages=[{"role": "user", "content": prompt}])
         return resp['message']['content']
     except Exception as e:
         return f"Error: {e}"
 
 # ===== Main =====
 def main():
-    global CURRENT_NODE, CWD
+    global CURRENT_NODE, CWD, ACTIVE_SKILL
     print("[Ω] LORNA v2.0 — Tri-Node + Agent")
-    print("    Commands: /quit, /node <fast|deep|code|agent>, /tools, /clear")
+    print("    Commands: /quit, /node <fast|deep|code|agent>, /tools, /skills, /skill, /clear")
     print(f"    Current node: {CURRENT_NODE}")
     print(f"    Current directory: {CWD}")
 
@@ -213,8 +287,29 @@ def main():
                 print(f"Current node: {CURRENT_NODE}")
         elif user_input == "/tools":
             print("Available tool commands:")
-            print("  ls, cd, pwd, cat, write, cp, mv, rm --force, run, fetch, find, grep, df, free, ps, help")
+            print("  skills, skill, ls, cd, pwd, cat, write, cp, mv, rm --force, run, fetch, find, grep, df, free, ps, help")
             print("Type any of these to use them. Everything else goes to the model.")
+        elif user_input == "/skills":
+            print(list_integrated_skills())
+        elif user_input.startswith("/skill"):
+            parts = user_input.split(maxsplit=2)
+            if len(parts) == 1:
+                print("Usage: /skill <id> | /skill use <id> | /skill off")
+            elif parts[1].lower() == "use":
+                if len(parts) < 3:
+                    print("Usage: /skill use <id>")
+                else:
+                    skill_id = parts[2].strip().lower()
+                    if skill_id not in INTEGRATED_SKILLS:
+                        print(f"Unknown skill: {skill_id}. Use /skills to list available skills.")
+                    else:
+                        ACTIVE_SKILL = skill_id
+                        print(f"Activated skill: {skill_id}")
+            elif parts[1].lower() == "off":
+                ACTIVE_SKILL = None
+                print("Cleared active skill.")
+            else:
+                print(read_integrated_skill(parts[1].lower()))
         elif user_input == "/clear":
             os.system("clear")
         else:

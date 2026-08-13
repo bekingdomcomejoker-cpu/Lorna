@@ -54,3 +54,7 @@ The agent starts in `/sdcard` when that location is available, otherwise it star
 > Agent mode is intended only for an interactive session on a device you control. Its `run` command can execute shell commands, and `rm --force` can delete files. Do not expose this program through a web server, public tunnel, chat bot, or any network-facing service without adding strict authentication, authorization, input validation, and filesystem restrictions.
 
 The agent source is in `agents/lorna_v2.py`. The launcher uses that tracked repository copy rather than a private `~/.lorna_v2` installation, which makes a clean clone reproducible without committing device-specific configuration.
+
+## Integrated Drive skills
+
+The agent includes four Drive-sourced resources as selectable model contexts. Use `/skills` to list them and `/skill use <id>` to activate one. See [Integrated Drive Skills](drive-skills.md) for the complete command reference, included source files, and external-service requirements.

@@ -18,6 +18,10 @@ TMP_DIR="$LORNA_TMP/bench"
 RESULTS_FILE="$HOME/lorna_bench_results.txt"
 BENCH_PROMPT="Explain in one short paragraph what RAM is."
 BENCH_TOKENS=32
+# Every benchmark process is non-interactive: it receives /exit on stdin and
+# has a hard deadline, so no model can remain waiting for a follow-up reply.
+BENCH_EXIT_INPUT="/exit"
+BENCH_TIMEOUT_SECONDS="${LORNA_BENCH_TIMEOUT_SECONDS:-180}"
 
 mkdir -p "$TMP_DIR"
 
@@ -88,7 +92,9 @@ bench_model() {
 
   local start_ms end_ms llama_status
   start_ms=$(date +%s%3N)
-  "$LLAMA_BIN" \
+  # Feed /exit to this individual llama-cli process.  The token cap and
+  # timeout remain as independent guards if a model ignores stdin.
+  printf '%s\n' "$BENCH_EXIT_INPUT" | timeout "${BENCH_TIMEOUT_SECONDS}s" "$LLAMA_BIN" \
     -m "$model" \
     -f "$TMP_DIR/bench_prompt.txt" \
     -n "$BENCH_TOKENS" \
@@ -98,13 +104,15 @@ bench_model() {
     --temp 0.1 \
     --no-display-prompt \
     "${extra_flags[@]}" \
-    2>"$TMP_DIR/bench_stderr.txt" > "$TMP_DIR/bench_stdout.txt" < /dev/null
-  llama_status=$?
+    2>"$TMP_DIR/bench_stderr.txt" > "$TMP_DIR/bench_stdout.txt"
+  llama_status=${PIPESTATUS[1]}
   end_ms=$(date +%s%3N)
   local elapsed_ms=$(( end_ms - start_ms ))
 
   if (( llama_status != 0 )); then
-    local error_line="${name}|${size_mb}|?|?|${elapsed_ms}ms|ERROR(${llama_status})"
+    local failure_class="ERROR(${llama_status})"
+    (( llama_status == 124 )) && failure_class="TIMEOUT"
+    local error_line="${name}|${size_mb}|?|?|${elapsed_ms}ms|${failure_class}"
     echo "$error_line"
     echo "$error_line" >> "$RESULTS_FILE"
     cleanup_llama

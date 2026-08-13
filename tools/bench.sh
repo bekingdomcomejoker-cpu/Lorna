@@ -168,8 +168,16 @@ bench_model() {
   tps_result=$(parse_tps_from_logs "$stdout_file" "$stderr_file")
   local prompt_tps="${tps_result%%|*}"
   local gen_tps="${tps_result##*|}"
+  local measured_suffix=""
 
-  local result_line="${name}|${size_mb}|${prompt_tps}|${gen_tps}|${elapsed_ms}ms|${class}"
+  # Some Termux llama-cli builds suppress raw perf lines in file mode.  Preserve
+  # a useful, clearly labelled comparison value based on the fixed token budget.
+  if [[ "$gen_tps" == "?" && "$elapsed_ms" -gt 0 ]]; then
+    gen_tps=$(awk -v tokens="$BENCH_TOKENS" -v ms="$elapsed_ms" 'BEGIN {printf "%.2f", tokens * 1000 / ms}')
+    measured_suffix="_EST"
+  fi
+
+  local result_line="${name}|${size_mb}|${prompt_tps}|${gen_tps}|${elapsed_ms}ms|${class}${measured_suffix}"
   echo "$result_line"
   echo "$result_line" >> "$RESULTS_FILE"
 
@@ -275,7 +283,7 @@ run_bench() {
 
     IFS='|' read -r rname rmb rprompt rgen relapsed rclass <<< "$result"
     local cc=$GREEN
-    [[ "$rclass" == "CAUTION" || "$rclass" == "RISKY" ]] && cc=$YELLOW
+    [[ "$rclass" == CAUTION* || "$rclass" == RISKY* ]] && cc=$YELLOW
     [[ "$rclass" == "SKIPPED" || "$rclass" == "UNSAFE" || "$rclass" == "CORRUPT" || "$rclass" == ERROR* ]] && cc=$RED
     printf "${cc}gen=%-6s${NC}  prompt=%-6s  %s\n" "$rgen" "$rprompt" "$relapsed"
   done

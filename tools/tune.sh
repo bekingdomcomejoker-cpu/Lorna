@@ -167,6 +167,10 @@ run_tune() {
               | grep -ioE 'Generation:[[:space:]]*[0-9]+(\.[0-9]+)?[[:space:]]*t/s|eval time.*[0-9]+\.[0-9]+[[:space:]]+tokens per second' \
               | grep -oE '[0-9]+(\.[0-9]+)?' | tail -1 || echo "?")
             status="OK"
+            if [[ "$gen_tps" == "?" && "$elapsed_ms" -gt 0 ]]; then
+              gen_tps=$(awk -v tokens=100 -v ms="$elapsed_ms" 'BEGIN {printf "%.2f", tokens * 1000 / ms}')
+              status="OK_EST"
+            fi
             
             # Track best config
             if [[ "$gen_tps" != "?" ]] && (( $(awk "BEGIN{print ($gen_tps > $best_gen_tps)}") )); then

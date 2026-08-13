@@ -1,0 +1,1 @@
+# stdlib-only package; no external Python dependencies required

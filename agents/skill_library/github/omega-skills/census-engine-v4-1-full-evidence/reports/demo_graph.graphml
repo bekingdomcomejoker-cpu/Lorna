@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<graphml xmlns="http://graphml.graphdrawing.org/xmlns">
+<graph edgedefault="directed">
+<node id="e1"><data key="label">Atlantis Nissan</data><data key="type">organization</data></node>
+<node id="e2"><data key="label">Atlantis Motors (Pty) Ltd</data><data key="type">organization</data></node>
+<node id="e3"><data key="label">Atlantis Nissan Centurion</data><data key="type">person</data></node>
+<node id="e4"><data key="label">Corner Lenchen</data><data key="type">person</data></node>
+<node id="e5"><data key="label">Down Touch Investments</data><data key="type">organization</data></node>
+<node id="e6"><data key="label">Johannes Cronje</data><data key="type">person</data></node>
+</graph>
+</graphml>

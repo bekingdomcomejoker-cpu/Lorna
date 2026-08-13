@@ -1,0 +1,17 @@
+{
+  "db": "census.sqlite",
+  "ingested_sources": 0,
+  "ingested_claims": 0,
+  "fetched": [],
+  "reports": [
+    "reports/evidence_report.md",
+    "reports/evidence_graph.json",
+    "reports/evidence_graph.graphml"
+  ],
+  "chain": {
+    "ok": true,
+    "records": 0,
+    "bad": [],
+    "tip": "GENESIS"
+  }
+}

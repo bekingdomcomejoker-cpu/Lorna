@@ -1,0 +1,25 @@
+{
+  "operator": "Dominique",
+  "base_dir": "~/cat_eof",
+  "bind": "127.0.0.1",
+  "port": 8765,
+  "default_route": "auto",
+  "timeouts": {
+    "local": 90,
+    "cli": 300,
+    "api": 180
+  },
+  "local": {
+    "llama_completion_url": "http://127.0.0.1:8080/completion",
+    "openai_compatible_url": "http://127.0.0.1:8080/v1/chat/completions",
+    "ollama_url": "http://127.0.0.1:11434/api/generate",
+    "ollama_model": ""
+  },
+  "connectors": {
+    "gdrive_mount": "",
+    "dropbox_mount": "",
+    "gdrive_remote": "",
+    "dropbox_remote": ""
+  },
+  "shadow_rules_enabled": false
+}

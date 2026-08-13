@@ -1,0 +1,17 @@
+{
+  "name": "Aletheia Perception Integrity Console",
+  "version": "1.0.0",
+  "platform": "Termux",
+  "runtime": "Python standard library",
+  "install_target": "~/cat_eof",
+  "features": [
+    "Five-Sense claim audit",
+    "ABCDE gates",
+    "Unknown Ledger",
+    "voice correction",
+    "inventory set comparison",
+    "semantic outsider ranking",
+    "JSON, JSONL, and SQLite persistence",
+    "existing-file preservation"
+  ]
+}

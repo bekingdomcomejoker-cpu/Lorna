@@ -1,0 +1,33 @@
+{
+  "name": "OMEGA Sovereign Federation",
+  "version": "2.0.0",
+  "operator": "Dominique Snyman",
+  "runtime": "Termux local-first",
+  "components": [
+    "provider-neutral router",
+    "existing oroute adapter",
+    "llama.cpp adapter",
+    "Ollama adapter",
+    "Codex CLI adapter",
+    "Gemini CLI adapter",
+    "Claude Code adapter",
+    "OpenAI Responses API adapter",
+    "Gemini API adapter",
+    "Anthropic Messages API adapter",
+    "Agent Task Queue",
+    "Google Drive mirror",
+    "Dropbox mirror",
+    "Five-Sense + ABCDE hard gate",
+    "inventory auditor",
+    "voice correction",
+    "reproducible text counter",
+    "static offline-capable dashboard",
+    "SQLite + JSONL ledger"
+  ],
+  "boundaries": {
+    "arbitrary_shell_from_model_output": false,
+    "browser_provider_keys": false,
+    "personal_agent_mode_direct_api_claim": false,
+    "provider_memory_as_source_of_truth": false
+  }
+}

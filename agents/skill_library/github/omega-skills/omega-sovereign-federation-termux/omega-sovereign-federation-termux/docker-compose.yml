@@ -1,0 +1,11 @@
+services:
+  omega-federation:
+    build: .
+    ports:
+      - "127.0.0.1:8765:8765"
+    environment:
+      CAT_EOF_HOME: /data/cat_eof
+      ALETHEIA_HOST: 0.0.0.0
+      ALETHEIA_PORT: 8765
+    volumes:
+      - ./data:/data/cat_eof

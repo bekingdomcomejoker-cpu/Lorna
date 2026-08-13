@@ -1,0 +1,47 @@
+{
+  "source": "Google Drive OMNI PC / OMNI PC (1) Skills folders",
+  "source_folders": [
+    {
+      "name": "OMNI PC",
+      "id": "142aA0p9PeQ0pPfxUI3IBC2VA7eu3lV-A",
+      "skills_folder_id": "1bz7PM38VKB6NElLxUEVNFJY_K9j75BmW"
+    },
+    {
+      "name": "OMNI PC (1)",
+      "id": "1xX-H4qN0W8XuFXKeVQAWgktD5Xb741HU",
+      "skills_folder_id": "1SaiGT8tuhVad_FcUHzjHcJR6FPlcibGz"
+    }
+  ],
+  "resources": [
+    {
+      "id": "17QSgICb8pOqf2M8DZMXoEz9-MZa34cuo",
+      "name": "extract_chatgpt_export_highlights.py",
+      "path": "extract_chatgpt_export_highlights.py"
+    },
+    {
+      "id": "1mqTNpEMhqR3gRGs35Btd7YAbo_KmxNK5",
+      "name": "POPULATION_INTELLIGENCE_MODEL.py",
+      "path": "POPULATION_INTELLIGENCE_MODEL.py"
+    },
+    {
+      "id": "1JLUagvPXgZnwep2YzG_ib8kYFM6u2YkJ",
+      "name": "claude_voice_manipulation.zip",
+      "path": "claude_voice_manipulation.zip"
+    },
+    {
+      "id": "1vyPvo-zIYZPARIQgYzpe0Hlq0u7kRzwz",
+      "name": "android-apk-builder.skill",
+      "path": "android-apk-builder.skill"
+    },
+    {
+      "id": "15W4mmzqd3PZpvxiFQGjECkaZ7NP_5MK5",
+      "name": "ai-conversation-sync.skill",
+      "path": "ai-conversation-sync.skill"
+    },
+    {
+      "id": "1Gn4tq2nPjbGBVcc7KrwX0xB8atQ-B5Pg",
+      "name": "chatgpt-session-bridge.skill",
+      "path": "chatgpt-session-bridge.skill"
+    }
+  ]
+}

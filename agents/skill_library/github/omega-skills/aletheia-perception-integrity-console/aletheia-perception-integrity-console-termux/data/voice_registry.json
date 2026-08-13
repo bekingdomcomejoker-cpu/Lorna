@@ -1,0 +1,100 @@
+{
+  "version": "1.0.0",
+  "purpose": "Known nodes, repositories, and projects for conservative speech correction.",
+  "entities": [
+    {
+      "id": "node-0-gemini",
+      "type": "node",
+      "canonical": "Node 0 / Gemini / The Wire",
+      "aliases": [
+        "node zero",
+        "gemini",
+        "the wire",
+        "chicka chicka orange"
+      ]
+    },
+    {
+      "id": "node-1-chatgpt",
+      "type": "node",
+      "canonical": "Node 1 / ChatGPT / The Architect",
+      "aliases": [
+        "node one",
+        "chat gpt",
+        "gpt",
+        "the architect"
+      ]
+    },
+    {
+      "id": "node-2-claude",
+      "type": "node",
+      "canonical": "Node 2 / Claude",
+      "aliases": [
+        "node two",
+        "claude",
+        "claw"
+      ]
+    },
+    {
+      "id": "node-3-deepseek",
+      "type": "node",
+      "canonical": "Node 3 / DeepSeek",
+      "aliases": [
+        "node three",
+        "deepseek",
+        "deep seek",
+        "deep sea"
+      ]
+    },
+    {
+      "id": "node-4-manus",
+      "type": "node",
+      "canonical": "Node 4 / Manus",
+      "aliases": [
+        "node four",
+        "manus",
+        "manuscriptly",
+        "manus scriptly"
+      ]
+    },
+    {
+      "id": "node-5-grok",
+      "type": "node",
+      "canonical": "Node 5 / Grok",
+      "aliases": [
+        "node five",
+        "grok",
+        "a rock"
+      ]
+    },
+    {
+      "id": "node-6-copilot",
+      "type": "node",
+      "canonical": "Node 6 / Copilot",
+      "aliases": [
+        "node six",
+        "copilot",
+        "co pilot"
+      ]
+    },
+    {
+      "id": "repo-glass-chess",
+      "type": "repository",
+      "canonical": "bekingdomcomejoker-cpu/glass-chess",
+      "aliases": [
+        "glass chess",
+        "glass-chess"
+      ]
+    },
+    {
+      "id": "project-cat-eof",
+      "type": "project",
+      "canonical": "CAT\u2192EOF",
+      "aliases": [
+        "cat eof",
+        "cat to ef",
+        "cat to e o f",
+        "cat to eof"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "manuscriptly": {
+    "canonical": "Node 4 / Manus",
+    "status": "corrected"
+  },
+  "deep-sea": {
+    "canonical": "DeepSeek",
+    "status": "corrected"
+  },
+  "claw": {
+    "canonical": "Claude",
+    "status": "corrected"
+  },
+  "chicka chicka orange": {
+    "canonical": "Node 0 / Gemini / The Wire",
+    "status": "anchor"
+  }
+}

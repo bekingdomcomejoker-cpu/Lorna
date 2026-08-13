@@ -1,0 +1,18 @@
+{
+  "case_id": "glass-chess-demo",
+  "senses": {
+    "hearing": "PARTIAL",
+    "sight": "STRONG",
+    "touch": "STRONG",
+    "smell": "STRONG",
+    "taste": "PARTIAL"
+  },
+  "abcde": {
+    "A": "CONFIRMED",
+    "B": "CONFIRMED",
+    "C": "CONFIRMED",
+    "D": "CONFIRMED",
+    "E": "PARTIAL"
+  },
+  "contradictions": []
+}

@@ -1,0 +1,10 @@
+services:
+  census-engine:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/app/data:ro
+      - ./out:/app/out
+    environment:
+      - CENSUS_DATA_DIR=/app/data

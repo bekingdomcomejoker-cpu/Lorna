@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Aletheia Perception Integrity Record",
+  "type": "object",
+  "required": [
+    "record_id",
+    "record_type",
+    "created_at",
+    "decision",
+    "canon_eligible",
+    "movement_allowed",
+    "confidence_score"
+  ],
+  "properties": {
+    "record_id": {
+      "type": "string"
+    },
+    "record_type": {
+      "type": "string"
+    },
+    "created_at": {
+      "type": "string"
+    },
+    "claim": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "subject": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "decision": {
+      "type": "string"
+    },
+    "canon_eligible": {
+      "type": "boolean"
+    },
+    "movement_allowed": {
+      "type": "boolean"
+    },
+    "confidence_score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "unknowns": {
+      "type": "array"
+    }
+  }
+}

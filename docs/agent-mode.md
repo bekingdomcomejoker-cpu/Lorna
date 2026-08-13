@@ -57,4 +57,4 @@ The agent source is in `agents/lorna_v2.py`. The launcher uses that tracked repo
 
 ## Integrated Drive skills
 
-The agent includes four Drive-sourced resources as selectable model contexts. Use `/skills` to list them and `/skill use <id>` to activate one. See [Integrated Drive Skills](drive-skills.md) for the complete command reference, included source files, and external-service requirements.
+The agent includes four Drive-sourced resources as selectable model contexts, plus the complete multi-source skill library. Use `/skills` to list them and `/skill use <id>` to activate one. See [Integrated Drive Skills](drive-skills.md) for the original integrated sources and [Complete Skill Library](skill-library.md) for the Drive, OmniPC, GitHub, and Termux collection.

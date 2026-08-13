@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ω OMEGA · ALETHEIA Sovereign Federation</title>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="omega">Ω</div>
+    <div>
+      <h1>OMEGA · ALETHEIA</h1>
+      <p>Perception Integrity · Sovereign Federation · Agent Handoff</p>
+    </div>
+    <span id="connection" class="pill muted">CHECKING</span>
+  </header>
+
+  <nav>
+    <button data-tab="engine" class="active">ENGINE</button>
+    <button data-tab="federation">FEDERATION</button>
+    <button data-tab="ledger">LEDGER</button>
+    <button data-tab="agent">AGENT QUEUE</button>
+  </nav>
+
+  <main>
+    <section id="engine" class="tab active">
+      <div id="steps" class="steps"></div>
+
+      <section class="stage active" data-stage="1">
+        <h2>LEVEL 1 — WITNESS · Six Questions</h2>
+        <div id="six"></div>
+        <button class="gold" id="to2">PROCEED TO ALETHEIA →</button>
+      </section>
+
+      <section class="stage" data-stage="2">
+        <h2>LEVEL 2A — ALETHEIA · Five Senses + ABCDE</h2>
+        <h3>FIVE SENSES</h3><div id="senses"></div>
+        <h3>ABCDE HARD GATES</h3><div id="abcde"></div>
+        <div id="auditVerdict" class="verdict"></div>
+        <button class="gold" id="auditBtn">SAVE AUDIT AND PROCEED →</button>
+      </section>
+
+      <section class="stage" data-stage="3">
+        <h2>LEVEL 2B — PERMISSION GATE</h2>
+        <div id="factors"></div>
+        <div id="gateVerdict" class="verdict"></div>
+        <button class="gold" id="to4">PROCEED TO REGISTER →</button>
+      </section>
+
+      <section class="stage" data-stage="4">
+        <h2>LEVEL 3 — DISCERNMENT REGISTER</h2>
+        <label>Receiver<select id="receiver">
+          <option value="skeptic">Skeptic</option>
+          <option value="curious">Curious / Open</option>
+          <option value="witness">Co-witness</option>
+          <option value="hostile">Hostile</option>
+          <option value="young">Spiritually Young</option>
+          <option value="elder">Elder / Proven</option>
+        </select></label>
+        <label>Register<select id="register">
+          <option value="surface">Surface — observable fact only</option>
+          <option value="mid" selected>Mid — one layer of meaning</option>
+          <option value="deep">Deep — full event, pattern and doctrine</option>
+        </select></label>
+        <label>Federation route<select id="route">
+          <option value="auto">Auto — local first, then authenticated nodes</option>
+          <option value="local">Local only</option>
+          <option value="reason">Reason</option>
+          <option value="code">Code / Codex first</option>
+          <option value="gpt">ChatGPT / Codex</option>
+          <option value="gemini">Gemini</option>
+          <option value="claude">Claude</option>
+          <option value="federate">Federate all available nodes</option>
+          <option value="agent">Agent Mode task packet</option>
+          <option value="drive">Agent packet → Google Drive</option>
+          <option value="dropbox">Agent packet → Dropbox</option>
+        </select></label>
+        <button class="gold" id="generate">CALIBRATE THROUGH FEDERATION →</button>
+        <pre id="generated"></pre>
+        <button class="gold" id="to5">PROCEED TO ESCALATION →</button>
+      </section>
+
+      <section class="stage" data-stage="5">
+        <h2>TWO-EDGED ESCALATION</h2>
+        <div id="escalation"></div>
+        <button class="gold" id="savePacket">SAVE FINAL CASE PACKET</button>
+        <button id="exportPacket">EXPORT JSON</button>
+        <pre id="finalResult"></pre>
+      </section>
+    </section>
+
+    <section id="federation" class="tab">
+      <h2>FEDERATION STATUS</h2>
+      <button id="refreshStatus">REFRESH</button>
+      <pre id="status"></pre>
+      <div class="routebox">
+        <select id="quickRoute">
+          <option>auto</option><option>local</option><option>reason</option>
+          <option>code</option><option>gpt</option><option>gemini</option>
+          <option>claude</option><option>federate</option><option>agent</option>
+          <option>drive</option><option>dropbox</option>
+        </select>
+        <textarea id="quickPrompt" placeholder="Route a task through the federation"></textarea>
+        <button class="gold" id="quickSend">ROUTE</button>
+        <pre id="quickOutput"></pre>
+      </div>
+    </section>
+
+    <section id="ledger" class="tab">
+      <h2>SOVEREIGN LEDGER</h2>
+      <button id="refreshLedger">REFRESH</button>
+      <pre id="ledgerOut"></pre>
+    </section>
+
+    <section id="agent" class="tab">
+      <h2>AGENT TASK QUEUE</h2>
+      <p>Personal Agent Mode receives sealed packets; it is not falsely represented as a direct API.</p>
+      <textarea id="agentTask" placeholder="Task for supervised Agent Mode"></textarea>
+      <label><input type="checkbox" id="mirrorDrive"> mirror to Drive</label>
+      <label><input type="checkbox" id="mirrorDropbox"> mirror to Dropbox</label>
+      <button class="gold" id="queueAgent">SEAL AND QUEUE</button>
+      <pre id="agentOut"></pre>
+      <button id="refreshAgents">REFRESH TASKS</button>
+      <pre id="agentList"></pre>
+    </section>
+  </main>
+
+  <footer>Relevant retrieval ≠ complete retrieval · Provider models are callable nodes · Local storage is the continuity spine.</footer>
+</div>
+<script src="/app.js"></script>
+</body>
+</html>

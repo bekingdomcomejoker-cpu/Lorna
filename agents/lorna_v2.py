@@ -9,6 +9,7 @@ import shutil
 import ollama
 import readline
 from datetime import datetime
+from pathlib import Path
 
 # ===== Configuration =====
 MODELS = {
@@ -44,30 +45,52 @@ INTEGRATED_SKILLS = {
     },
 }
 ACTIVE_SKILL = None
+SKILL_LIBRARY_DIRECTORY = os.path.join(os.path.dirname(os.path.abspath(__file__)), "skill_library")
+TEXT_SKILL_SUFFIXES = {".md", ".py", ".json", ".txt", ".sh", ".yaml", ".yml"}
+
+def library_skill_map():
+    root = Path(SKILL_LIBRARY_DIRECTORY)
+    entries = {}
+    if not root.is_dir():
+        return entries
+    for path in sorted(root.rglob("*")):
+        if not path.is_file() or path.name == "manifest.json":
+            continue
+        relative_path = path.relative_to(root).as_posix()
+        entries[f"library:{relative_path.lower()}"] = path
+    return entries
 
 def skill_file_path(skill_id):
-    item = INTEGRATED_SKILLS.get(skill_id)
-    if item is None:
-        return None
-    return os.path.join(SKILL_DIRECTORY, item["path"])
+    normalized_id = skill_id.lower()
+    item = INTEGRATED_SKILLS.get(normalized_id)
+    if item is not None:
+        return Path(SKILL_DIRECTORY) / item["path"]
+    return library_skill_map().get(normalized_id)
 
 def list_integrated_skills():
     lines = ["Integrated Drive skills:"]
     for skill_id, item in INTEGRATED_SKILLS.items():
         marker = " [ACTIVE]" if skill_id == ACTIVE_SKILL else ""
         lines.append(f"  {skill_id:<28} {item['title']}{marker}")
-    lines.append("Use /skill <id> to view, /skill use <id> to activate, or /skill off to clear.")
+
+    library_entries = library_skill_map()
+    lines.append(f"\nCollected skill library ({len(library_entries)} resources):")
+    for skill_id in library_entries:
+        marker = " [ACTIVE]" if skill_id == ACTIVE_SKILL else ""
+        lines.append(f"  {skill_id}{marker}")
+    lines.append("Use /skill <id> to view text sources, /skill use <id> to activate, or /skill off to clear.")
     return "\n".join(lines)
 
 def read_integrated_skill(skill_id):
     path = skill_file_path(skill_id)
     if path is None:
         return f"Unknown skill: {skill_id}. Use /skills to list available skills."
+    if path.suffix.lower() not in TEXT_SKILL_SUFFIXES:
+        return f"Stored binary skill archive: {path.name} ({path.stat().st_size} bytes). It is available in the skill library but is not rendered as prompt text."
     try:
-        with open(path, "r", encoding="utf-8") as handle:
-            return handle.read()
+        return path.read_text(encoding="utf-8", errors="replace")
     except Exception as exc:
-        return f"Error reading integrated skill {skill_id}: {exc}"
+        return f"Error reading skill {skill_id}: {exc}"
 
 # ===== Tool Functions =====
 def run_cmd(cmd):
@@ -99,7 +122,7 @@ def execute_tool(user_input):
             if len(args) < 2:
                 return "Usage: skill use <id>"
             skill_id = args[1].strip().lower()
-            if skill_id not in INTEGRATED_SKILLS:
+            if skill_file_path(skill_id) is None:
                 return f"Unknown skill: {skill_id}. Use skills to list available skills."
             ACTIVE_SKILL = skill_id
             return f"Activated skill: {skill_id}"
@@ -288,6 +311,7 @@ def main():
         elif user_input == "/tools":
             print("Available tool commands:")
             print("  skills, skill, ls, cd, pwd, cat, write, cp, mv, rm --force, run, fetch, find, grep, df, free, ps, help")
+            print("  Skill IDs can be built-in names such as manus-api or library:<source>/<path>.")
             print("Type any of these to use them. Everything else goes to the model.")
         elif user_input == "/skills":
             print(list_integrated_skills())
@@ -300,7 +324,7 @@ def main():
                     print("Usage: /skill use <id>")
                 else:
                     skill_id = parts[2].strip().lower()
-                    if skill_id not in INTEGRATED_SKILLS:
+                    if skill_file_path(skill_id) is None:
                         print(f"Unknown skill: {skill_id}. Use /skills to list available skills.")
                     else:
                         ACTIVE_SKILL = skill_id

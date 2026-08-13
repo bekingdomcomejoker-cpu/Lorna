@@ -1,0 +1,59 @@
+{
+  "engine": "CENSUS civic witness engine",
+  "version": "1.0.0-gov-handoff",
+  "data_dir": "/mnt/data/census_gov_deployable_engine/data",
+  "expected_counts": {
+    "canon_core": 357,
+    "source_filename_date_witness": 1392,
+    "date_repair_required": 428,
+    "private_canon_candidate": 26,
+    "private_only_sensitive": 24,
+    "unconfirmed_review": 15,
+    "noise_or_log_review": 8,
+    "line_evidence_missing": 7,
+    "fuzzy_witness_only": 3
+  },
+  "bucket_files": {
+    "canon_core": {
+      "filename": "canon_core_357.redacted.jsonl",
+      "exists": true,
+      "size_bytes": 1689256,
+      "records": 357
+    },
+    "source_filename_date_witness": {
+      "filename": "source_filename_date_witness_1392.redacted.jsonl",
+      "exists": true,
+      "size_bytes": 6483306,
+      "records": 1392
+    },
+    "date_repair_required": {
+      "filename": "date_repair_required_428.redacted.jsonl",
+      "exists": true,
+      "size_bytes": 2027166,
+      "records": 428
+    },
+    "unconfirmed_review": {
+      "filename": "unconfirmed_review_26.redacted.jsonl",
+      "exists": true,
+      "size_bytes": 123647,
+      "records": 26
+    }
+  },
+  "boundary": {
+    "allowed_uses": [
+      "service-delivery planning",
+      "record reconciliation",
+      "citizen-facing transparency reports",
+      "evidence/witness packet generation",
+      "oversight-reviewed voluntary pilot analysis"
+    ],
+    "prohibited_uses": [
+      "automated denial of rights, benefits, housing, employment, credit, education, or healthcare",
+      "policing/enforcement targeting without independent lawful process",
+      "secret citizen scoring",
+      "coercive surveillance",
+      "unreviewable prediction or profiling",
+      "deployment without appeal, correction, and audit routes"
+    ]
+  }
+}

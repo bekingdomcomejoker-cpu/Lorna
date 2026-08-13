@@ -1,0 +1,6 @@
+bekingdomcomejoker-cpu/omega-engine
+bekingdomcomejoker-cpu/aletheia-engine
+bekingdomcomejoker-cpu/merkabah-engine
+bekingdomcomejoker-cpu/guardian-node
+bekingdomcomejoker-cpu/registry-core
+bekingdomcomejoker-cpu/glass-chess

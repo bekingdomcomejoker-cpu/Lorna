@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "device": {
+    "label": "Redmi 13C / Helio G85 / Termux",
+    "ram_mb": 3720,
+    "notes": "Run local GGUF benchmarks sequentially; do not start concurrent llama-cli processes."
+  },
+  "workflow_rules": [
+    "Use one llama-cli process at a time.",
+    "Let the fixed token budget finish before queued /exit is consumed.",
+    "Use timeouts and record failures rather than retrying indefinitely.",
+    "Label elapsed-time speed calculations as estimated when raw llama.cpp timings are absent."
+  ],
+  "known_models": {
+    "qwen2.5-0.5b-instruct-q4_k_m.gguf": {
+      "status": "safe_candidate",
+      "notes": "User-captured interactive session completed a p-series answer at Prompt 16.0 t/s and Generation 7.6 t/s."
+    },
+    "smollm2-360m-instruct-q4_k_m.gguf": {
+      "status": "safe_candidate",
+      "notes": "User-captured interactive session completed a RAM answer at Prompt 23.8 t/s and Generation 13.0 t/s."
+    },
+    "tinydolphin-2.8-1.1b-q4_k_m.gguf": {
+      "status": "corrupt",
+      "notes": "llama.cpp reported tensor data outside file bounds; replace the GGUF before any tuning attempt."
+    }
+  },
+  "runs": [],
+  "recommendations": {}
+}

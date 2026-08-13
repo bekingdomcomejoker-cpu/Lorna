@@ -10,6 +10,10 @@ import ollama
 import readline
 from datetime import datetime
 from pathlib import Path
+try:
+    from .benchmark_manager import command as benchmark_command
+except ImportError:
+    from benchmark_manager import command as benchmark_command
 
 # ===== Configuration =====
 MODELS = {
@@ -110,6 +114,10 @@ def execute_tool(user_input):
     parts = user_input.strip().split(maxsplit=1)
     cmd = parts[0].lower() if parts else ""
     arg = parts[1] if len(parts) > 1 else ""
+
+    # Durable benchmark orchestration
+    if cmd == "benchmark":
+        return benchmark_command(arg)
 
     # Integrated Drive skills
     if cmd == "skills":
@@ -284,7 +292,7 @@ def chat_with_node(user_input):
 def main():
     global CURRENT_NODE, CWD, ACTIVE_SKILL
     print("[Ω] LORNA v2.0 — Tri-Node + Agent")
-    print("    Commands: /quit, /node <fast|deep|code|agent>, /tools, /skills, /skill, /clear")
+    print("    Commands: /quit, /node <fast|deep|code|agent>, /tools, /skills, /skill, /benchmark, /clear")
     print(f"    Current node: {CURRENT_NODE}")
     print(f"    Current directory: {CWD}")
 
@@ -310,7 +318,8 @@ def main():
                 print(f"Current node: {CURRENT_NODE}")
         elif user_input == "/tools":
             print("Available tool commands:")
-            print("  skills, skill, ls, cd, pwd, cat, write, cp, mv, rm --force, run, fetch, find, grep, df, free, ps, help")
+            print("  benchmark, skills, skill, ls, cd, pwd, cat, write, cp, mv, rm --force, run, fetch, find, grep, df, free, ps, help")
+            print("  Benchmark: /benchmark status | models | sweep qwen | sweep smollm | memory")
             print("  Skill IDs can be built-in names such as manus-api or library:<source>/<path>.")
             print("Type any of these to use them. Everything else goes to the model.")
         elif user_input == "/skills":
@@ -334,6 +343,8 @@ def main():
                 print("Cleared active skill.")
             else:
                 print(read_integrated_skill(parts[1].lower()))
+        elif user_input.startswith("/benchmark"):
+            print(benchmark_command(user_input[len("/benchmark"):].strip()))
         elif user_input == "/clear":
             os.system("clear")
         else:

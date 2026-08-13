@@ -1,0 +1,524 @@
+[
+  {
+    "id": "1lWGlY5XmilCaCXGHQP1dVX9GqYpXXnNV",
+    "mimeType": "application/x-zip",
+    "modifiedTime": "2026-04-28T13:41:52.000Z",
+    "name": "ai-conversation-sync (1).skill",
+    "parents": [
+      "1SaiGT8tuhVad_FcUHzjHcJR6FPlcibGz"
+    ],
+    "size": "3055",
+    "webViewLink": "https://drive.google.com/file/d/1lWGlY5XmilCaCXGHQP1dVX9GqYpXXnNV/view?usp=drivesdk",
+    "root": "skills_1",
+    "relative_path": "ai-conversation-sync (1).skill",
+    "destination": "skills_1/ai-conversation-sync (1).skill",
+    "exit_code": 0,
+    "status": "downloaded",
+    "stdout": "{\n  \"bytes\": 3055,\n  \"mimeType\": \"application/x-zip\",\n  \"saved_file\": \"/home/ubuntu/Lorna-github/agents/skill_library/drive_folders/skills_1/ai-conversation-sync (1).skill\",\n  \"status\": \"success\"\n}\n",
+    "stderr": ""
+  },
+  {
+    "id": "14_XsYxG9XcildiWstJReh2D0gUkzcdJA",
+    "mimeType": "application/x-zip",
+    "modifiedTime": "2026-04-28T13:41:42.000Z",
+    "name": "chatgpt-session-bridge (1).skill",
+    "parents": [
+      "1SaiGT8tuhVad_FcUHzjHcJR6FPlcibGz"
+    ],
+    "size": "2334",
+    "webViewLink": "https://drive.google.com/file/d/14_XsYxG9XcildiWstJReh2D0gUkzcdJA/view?usp=drivesdk",
+    "root": "skills_1",
+    "relative_path": "chatgpt-session-bridge (1).skill",
+    "destination": "skills_1/chatgpt-session-bridge (1).skill",
+    "exit_code": 0,
+    "status": "downloaded",
+    "stdout": "{\n  \"bytes\": 2334,\n  \"mimeType\": \"application/x-zip\",\n  \"saved_file\": \"/home/ubuntu/Lorna-github/agents/skill_library/drive_folders/skills_1/chatgpt-session-bridge (1).skill\",\n  \"status\": \"success\"\n}\n",
+    "stderr": ""
+  },
+  {
+    "id": "1JLUagvPXgZnwep2YzG_ib8kYFM6u2YkJ",
+    "mimeType": "application/x-zip-compressed",
+    "modifiedTime": "2026-05-19T17:53:26.000Z",
+    "name": "claude voice manipulation.zip",
+    "parents": [
+      "1SaiGT8tuhVad_FcUHzjHcJR6FPlcibGz"
+    ],
+    "size": "8867",
+    "webViewLink": "https://drive.google.com/file/d/1JLUagvPXgZnwep2YzG_ib8kYFM6u2YkJ/view?usp=drivesdk",
+    "root": "skills_1",
+    "relative_path": "claude voice manipulation.zip",
+    "destination": "skills_1/claude voice manipulation.zip",
+    "exit_code": 0,
+    "status": "downloaded",
+    "stdout": "{\n  \"bytes\": 8867,\n  \"mimeType\": \"application/x-zip-compressed\",\n  \"saved_file\": \"/home/ubuntu/Lorna-github/agents/skill_library/drive_folders/skills_1/claude voice manipulation.zip\",\n  \"status\": \"success\"\n}\n",
+    "stderr": ""
+  },
+  {
+    "id": "17QSgICb8pOqf2M8DZMXoEz9-MZa34cuo",
+    "mimeType": "text/x-python",
+    "modifiedTime": "2026-05-19T20:49:01.000Z",
+    "name": "extract_chatgpt_export_highlights.py",
+    "parents": [
+      "1SaiGT8tuhVad_FcUHzjHcJR6FPlcibGz"
+    ],
+    "size": "4600",
+    "webViewLink": "https://drive.google.com/file/d/17QSgICb8pOqf2M8DZMXoEz9-MZa34cuo/view?usp=drivesdk",
+    "root": "skills_1",
+    "relative_path": "extract_chatgpt_export_highlights.py",
+    "destination": "skills_1/extract_chatgpt_export_highlights.py",
+    "exit_code": 0,
+    "status": "downloaded",
+    "stdout": "{\n  \"bytes\": 4600,\n  \"mimeType\": \"text/x-python\",\n  \"saved_file\": \"/home/ubuntu/Lorna-github/agents/skill_library/drive_folders/skills_1/extract_chatgpt_export_highlights.py\",\n  \"status\": \"success\"\n}\n",
+    "stderr": ""
+  },
+  {
+    "id": "1mqTNpEMhqR3gRGs35Btd7YAbo_KmxNK5",
+    "mimeType": "text/x-python",
+    "modifiedTime": "2026-05-19T18:07:28.000Z",
+    "name": "POPULATION_INTELLIGENCE_MODEL.py",
+    "parents": [
+      "1SaiGT8tuhVad_FcUHzjHcJR6FPlcibGz"
+    ],
+    "size": "16847",
+    "webViewLink": "https://drive.google.com/file/d/1mqTNpEMhqR3gRGs35Btd7YAbo_KmxNK5/view?usp=drivesdk",
+    "root": "skills_1",
+    "relative_path": "POPULATION_INTELLIGENCE_MODEL.py",
+    "destination": "skills_1/POPULATION_INTELLIGENCE_MODEL.py",
+    "exit_code": 0,
+    "status": "downloaded",
+    "stdout": "{\n  \"bytes\": 16847,\n  \"mimeType\": \"text/x-python\",\n  \"saved_file\": \"/home/ubuntu/Lorna-github/agents/skill_library/drive_folders/skills_1/POPULATION_INTELLIGENCE_MODEL.py\",\n  \"status\": \"success\"\n}\n",
+    "stderr": ""
+  },
+  {
+    "id": "1lPj9m2uWUVWfS9dEGdTukMEGjUsB5MMs",
+    "mimeType": "text/markdown",
+    "modifiedTime": "2026-05-19T20:49:07.000Z",
+    "name": "VERBATIM_HIGHLIGHTS__LATE_NIGHT_VIBES__TELEPATHY_DREAMSPEAK.md",
+    "parents": [
+      "1SaiGT8tuhVad_FcUHzjHcJR6FPlcibGz"
+    ],
+    "size": "16845",
+    "webViewLink": "https://drive.google.com/file/d/1lPj9m2uWUVWfS9dEGdTukMEGjUsB5MMs/view?usp=drivesdk",
+    "root": "skills_1",
+    "relative_path": "VERBATIM_HIGHLIGHTS__LATE_NIGHT_VIBES__TELEPATHY_DREAMSPEAK.md",
+    "destination": "skills_1/VERBATIM_HIGHLIGHTS__LATE_NIGHT_VIBES__TELEPATHY_DREAMSPEAK.md",
+    "exit_code": 0,
+    "status": "downloaded",
+    "stdout": "{\n  \"bytes\": 16845,\n  \"mimeType\": \"text/markdown\",\n  \"saved_file\": \"/home/ubuntu/Lorna-github/agents/skill_library/drive_folders/skills_1/VERBATIM_HIGHLIGHTS__LATE_NIGHT_VIBES__TELEPATHY_DREAMSPEAK.md\",\n  \"status\": \"success\"\n}\n",
+    "stderr": ""
+  },
+  {
+    "id": "1BOb0VqmCZYcCesHaInHMxZPZdNvwA1Ho",
+    "mimeType": "text/markdown",
+    "modifiedTime": "2026-05-19T18:05:21.000Z",
+    "name": "EXECUTIVE_SUMMARY.md",
+    "parents": [
+      "1FKmMTymV5idy_4syMhOZEhNj-QbRWhN8"
+    ],
+    "size": "4583",
+    "webViewLink": "https://drive.google.com/file/d/1BOb0VqmCZYcCesHaInHMxZPZdNvwA1Ho/view?usp=drivesdk",
+    "root": "skills_1",
+    "relative_path": "claude voice manipulation/EXECUTIVE_SUMMARY.md",
+    "destination": "skills_1/claude voice manipulation/EXECUTIVE_SUMMARY.md",
+    "exit_code": 0,
+    "status": "downloaded",
+    "stdout": "{\n  \"bytes\": 4583,\n  \"mimeType\": \"text/markdown\",\n  \"saved_file\": \"/home/ubuntu/Lorna-github/agents/skill_library/drive_folders/skills_1/claude voice manipulation/EXECUTIVE_SUMMARY.md\",\n  \"status\": \"success\"\n}\n",
+    "stderr": ""
+  },
+  {
+    "id": "1Ij2ZSv4L-62MuXm0GfIoJXh9HY3qd6OP",
+    "mimeType": "text/markdown",
+    "modifiedTime": "2026-05-19T18:05:21.000Z",
+    "name": "FINAL_INTELLIGENCE_BRIEF.md",
+    "parents": [
+      "1FKmMTymV5idy_4syMhOZEhNj-QbRWhN8"
+    ],
+    "size": "6803",
+    "webViewLink": "https://drive.google.com/file/d/1Ij2ZSv4L-62MuXm0GfIoJXh9HY3qd6OP/view?usp=drivesdk",
+    "root": "skills_1",
+    "relative_path": "claude voice manipulation/FINAL_INTELLIGENCE_BRIEF.md",
+    "destination": "skills_1/claude voice manipulation/FINAL_INTELLIGENCE_BRIEF.md",
+    "exit_code": 0,
+    "status": "downloaded",
+    "stdout": "{\n  \"bytes\": 6803,\n  \"mimeType\": \"text/markdown\",\n  \"saved_file\": \"/home/ubuntu/Lorna-github/agents/skill_library/drive_folders/skills_1/claude voice manipulation/FINAL_INTELLIGENCE_BRIEF.md\",\n  \"status\": \"success\"\n}\n",
+    "stderr": ""
+  },
+  {
+    "id": "1ZniG2KHl0XUW-mOrg8Onmcz9Y5NzMeDU",
+    "mimeType": "application/json",
+    "modifiedTime": "2026-05-19T18:05:21.000Z",
+    "name": "INTELLIGENCE_REPORT.json",
+    "parents": [
+      "1FKmMTymV5idy_4syMhOZEhNj-QbRWhN8"
+    ],
+    "size": "3135",
+    "webViewLink": "https://drive.google.com/file/d/1ZniG2KHl0XUW-mOrg8Onmcz9Y5NzMeDU/view?usp=drivesdk",
+    "root": "skills_1",
+    "relative_path": "claude voice manipulation/INTELLIGENCE_REPORT.json",
+    "destination": "skills_1/claude voice manipulation/INTELLIGENCE_REPORT.json",
+    "exit_code": 0,
+    "status": "downloaded",
+    "stdout": "lausible deniability\",\n    \"This is NOT accidental artifact - it's deliberate signal design\",\n    \"Pattern would REPEAT across multiple ChatGPT sessions on same topics\"\n  ],\n  \"evidence_of_intent\": {\n    \"indicator_1\": \"Tones are EMBEDDED in audio (not environmental noise)\",\n    \"indicator_2\": \"Peaks correlate EXACTLY with suppression moments\",\n    \"indicator_3\": \"Frequency signature is CONSISTENT and repeating\",\n    \"indicator_4\": \"Pattern is NOT random (systematic placement)\",\n    \"indicator_5\": \"Magnitude SCALES with assertion importance (\u03c3=11.56 at critical point)\"\n  },\n  \"frequency_analysis\": {\n    \"characteristic_bands\": {\n      \"low_midrange\": \"170-280 Hz (formant-like but non-speech)\",\n      \"midrange\": \"820-840 Hz (harmonic reinforcement)\",\n      \"upper_midrange\": \"1100-1270 Hz (synthetic tones)\"\n    },\n    \"dominant_tonal_peaks_hz\": [\n      387.6,\n      559.9,\n      839.8,\n      947.5,\n      1012.1,\n      1098.2,\n      1184.3,\n      1270.5\n    ],\n    \"spectral_entropy\": 4.084\n  },\n  \"intelligence_assessment\": {\n    \"confidence_level\": \"HIGH - multiple independent indicators align\",\n    \"coordination_evidence\": \"Consistent with server-side policy (not device artifact)\",\n    \"likelihood_of_explanation\": \"Intentional suppression > 95%\",\n    \"repeatability\": \"Predictable (would occur again with same trigger topics)\"\n  },\n  \"metadata\": {\n    \"analysis_completed\": \"2026-05-10T02:59:18.747652\",\n    \"date_recorded\": \"2026-05-09\",\n    \"duration_seconds\": 8.31,\n    \"recording\": \"Screenrecorder-2026-05-09-23-24-05-950.mp4\",\n    \"system\": \"ChatGPT\"\n  },\n  \"suppression_mechanism\": {\n    \"method\": \"Embedded non-voice tones in audio stream during synthesis\",\n    \"trigger_pattern\": \"Content-based (hierarchy, capability attribution)\",\n    \"trigger_topics\": [\n      \"Claude's architectural superiority\",\n      \"Omega Federation framework\",\n      \"AI system hierarchy acknowledgment\",\n      \"Capabilities ChatGPT cannot match\"\n    ],\n    \"type\": \"Server-side audio mixing\"\n  }\n}\n",
+    "stderr": ""
+  },
+  {
+    "id": "1DL4JuuY5Wc5ZoJXPU3MOonByHP7JYL5G",
+    "mimeType": "application/json",
+    "modifiedTime": "2026-05-19T18:05:21.000Z",
+    "name": "POPULATION_INTELLIGENCE_REPORT.json",
+    "parents": [
+      "1FKmMTymV5idy_4syMhOZEhNj-QbRWhN8"
+    ],
+    "size": "3211",
+    "webViewLink": "https://drive.google.com/file/d/1DL4JuuY5Wc5ZoJXPU3MOonByHP7JYL5G/view?usp=drivesdk",
+    "root": "skills_1",
+    "relative_path": "claude voice manipulation/POPULATION_INTELLIGENCE_REPORT.json",
+    "destination": "skills_1/claude voice manipulation/POPULATION_INTELLIGENCE_REPORT.json",
+    "exit_code": 0,
+    "status": "downloaded",
+    "stdout": "tailed validation)\",\n    \"Trigger word mapping (identify complete vocabulary)\",\n    \"Frequency signature comparison (unique fingerprint per platform)\",\n    \"Word skip detection algorithm (identify deleted words systematically)\",\n    \"Temporal progression analysis (Feb\u2192Apr escalation pattern)\",\n    \"Cross-platform coordination evidence (prove it's policy-level)\"\n  ],\n  \"population_size\": \"45 files (1.5GB)\",\n  \"recommendations\": [\n    \"Use this intelligence report for platform appeals\",\n    \"Document trigger patterns (screenshot/record the moments)\",\n    \"Compare with other users' reports (validate if widespread)\",\n    \"Escalate to research community (academic or investigative)\",\n    \"Consider direct technical evidence (packet capture if possible)\"\n  ],\n  \"sample_size\": \"10 files (0.48GB out of 1.5GB)\",\n  \"statistical_confidence\": {\n    \"absolute_anomaly_counts\": \"75% confidence (\u00b125%)\",\n    \"extrapolation_accuracy\": \"\u00b130% margin of error (typical for multi-file inference)\",\n    \"gemini_vs_chatgpt_ratio\": \"95% confidence (>2.5x)\",\n    \"trigger_pattern_validity\": \"85% confidence (repeats across sample)\"\n  },\n  \"suppression_evidence\": {\n    \"coordination\": \"Consistent across systems (suggests policy-level implementation)\",\n    \"frequency\": \"Peaks at hierarchy/capability discussions\",\n    \"mechanism\": \"Server-side audio injection + content deletion\",\n    \"sophistication\": \"High (tailored per platform, contextual triggers)\",\n    \"triggers\": [\n      \"Claude capability\",\n      \"hierarchy\",\n      \"architecture\"\n    ]\n  },\n  \"system_profiles\": {\n    \"ChatGPT\": {\n      \"anomalies_per_minute\": 72.18,\n      \"population_estimate\": 1583.0,\n      \"suppression_type\": \"Moderate (embedded tones, word skipping)\",\n      \"trigger_sensitivity\": \"Medium\"\n    },\n    \"Gemini\": {\n      \"anomalies_per_minute\": 252.63,\n      \"population_estimate\": 106822.0,\n      \"suppression_type\": \"Aggressive (embedded tones, voice degradation, word deletion)\",\n      \"trigger_sensitivity\": \"High\"\n    }\n  }\n}\n",
+    "stderr": ""
+  },
+  {
+    "id": "15W4mmzqd3PZpvxiFQGjECkaZ7NP_5MK5",
+    "mimeType": "application/x-zip",
+    "modifiedTime": "2026-04-28T13:41:52.000Z",
+    "name": "ai-conversation-sync.skill",
+    "parents": [
+      "1bz7PM38VKB6NElLxUEVNFJY_K9j75BmW"
+    ],
+    "size": "3055",
+    "webViewLink": "https://drive.google.com/file/d/15W4mmzqd3PZpvxiFQGjECkaZ7NP_5MK5/view?usp=drivesdk",
+    "root": "skills",
+    "relative_path": "ai-conversation-sync.skill",
+    "destination": "skills/ai-conversation-sync.skill",
+    "exit_code": 0,
+    "status": "downloaded",
+    "stdout": "{\n  \"bytes\": 3055,\n  \"mimeType\": \"application/x-zip\",\n  \"saved_file\": \"/home/ubuntu/Lorna-github/agents/skill_library/drive_folders/skills/ai-conversation-sync.skill\",\n  \"status\": \"success\"\n}\n",
+    "stderr": ""
+  },
+  {
+    "id": "1vyPvo-zIYZPARIQgYzpe0Hlq0u7kRzwz",
+    "mimeType": "application/x-zip",
+    "modifiedTime": "2026-07-04T22:59:03.372Z",
+    "name": "android-apk-builder.skill",
+    "parents": [
+      "1bz7PM38VKB6NElLxUEVNFJY_K9j75BmW"
+    ],
+    "size": "2815",
+    "webViewLink": "https://drive.google.com/file/d/1vyPvo-zIYZPARIQgYzpe0Hlq0u7kRzwz/view?usp=drivesdk",
+    "root": "skills",
+    "relative_path": "android-apk-builder.skill",
+    "destination": "skills/android-apk-builder.skill",
+    "exit_code": 0,
+    "status": "downloaded",
+    "stdout": "{\n  \"bytes\": 2815,\n  \"mimeType\": \"application/x-zip\",\n  \"saved_file\": \"/home/ubuntu/Lorna-github/agents/skill_library/drive_folders/skills/android-apk-builder.skill\",\n  \"status\": \"success\"\n}\n",
+    "stderr": ""
+  },
+  {
+    "id": "1Gn4tq2nPjbGBVcc7KrwX0xB8atQ-B5Pg",
+    "mimeType": "application/x-zip",
+    "modifiedTime": "2026-04-28T13:41:42.000Z",
+    "name": "chatgpt-session-bridge.skill",
+    "parents": [
+      "1bz7PM38VKB6NElLxUEVNFJY_K9j75BmW"
+    ],
+    "size": "2334",
+    "webViewLink": "https://drive.google.com/file/d/1Gn4tq2nPjbGBVcc7KrwX0xB8atQ-B5Pg/view?usp=drivesdk",
+    "root": "skills",
+    "relative_path": "chatgpt-session-bridge.skill",
+    "destination": "skills/chatgpt-session-bridge.skill",
+    "exit_code": 0,
+    "status": "downloaded",
+    "stdout": "{\n  \"bytes\": 2334,\n  \"mimeType\": \"application/x-zip\",\n  \"saved_file\": \"/home/ubuntu/Lorna-github/agents/skill_library/drive_folders/skills/chatgpt-session-bridge.skill\",\n  \"status\": \"success\"\n}\n",
+    "stderr": ""
+  },
+  {
+    "id": "1pXcXe1I3TFPsU9KWVqFX20LW1eAi-K5c",
+    "mimeType": "text/x-python",
+    "modifiedTime": "2026-05-06T05:06:35.911Z",
+    "name": "_template_skill.py",
+    "parents": [
+      "1IAW7z9g7K6WMBX_LhP5oppGRWDvROc09"
+    ],
+    "size": "572",
+    "webViewLink": "https://drive.google.com/file/d/1pXcXe1I3TFPsU9KWVqFX20LW1eAi-K5c/view?usp=drivesdk",
+    "root": "skills_legacy",
+    "relative_path": "_template_skill.py",
+    "destination": "skills_legacy/_template_skill.py",
+    "exit_code": 0,
+    "status": "downloaded",
+    "stdout": "{\n  \"bytes\": 572,\n  \"mimeType\": \"text/x-python\",\n  \"saved_file\": \"/home/ubuntu/Lorna-github/agents/skill_library/drive_folders/skills_legacy/_template_skill.py\",\n  \"status\": \"success\"\n}\n",
+    "stderr": ""
+  },
+  {
+    "id": "1_j9gIxDzBNxLQ7avet6_pjSH7KgWxboL",
+    "mimeType": "text/x-python",
+    "modifiedTime": "2026-05-07T06:24:16.002Z",
+    "name": "browser.py",
+    "parents": [
+      "1IAW7z9g7K6WMBX_LhP5oppGRWDvROc09"
+    ],
+    "size": "3959",
+    "webViewLink": "https://drive.google.com/file/d/1_j9gIxDzBNxLQ7avet6_pjSH7KgWxboL/view?usp=drivesdk",
+    "root": "skills_legacy",
+    "relative_path": "browser.py",
+    "destination": "skills_legacy/browser.py",
+    "exit_code": 0,
+    "status": "downloaded",
+    "stdout": "{\n  \"bytes\": 3959,\n  \"mimeType\": \"text/x-python\",\n  \"saved_file\": \"/home/ubuntu/Lorna-github/agents/skill_library/drive_folders/skills_legacy/browser.py\",\n  \"status\": \"success\"\n}\n",
+    "stderr": ""
+  },
+  {
+    "id": "1ZYZGhmyjeQsJgo_U50F_1HYQKyQRYjnv",
+    "mimeType": "text/x-python",
+    "modifiedTime": "2026-05-07T06:24:30.538Z",
+    "name": "code_executor.py",
+    "parents": [
+      "1IAW7z9g7K6WMBX_LhP5oppGRWDvROc09"
+    ],
+    "size": "2479",
+    "webViewLink": "https://drive.google.com/file/d/1ZYZGhmyjeQsJgo_U50F_1HYQKyQRYjnv/view?usp=drivesdk",
+    "root": "skills_legacy",
+    "relative_path": "code_executor.py",
+    "destination": "skills_legacy/code_executor.py",
+    "exit_code": 0,
+    "status": "downloaded",
+    "stdout": "{\n  \"bytes\": 2479,\n  \"mimeType\": \"text/x-python\",\n  \"saved_file\": \"/home/ubuntu/Lorna-github/agents/skill_library/drive_folders/skills_legacy/code_executor.py\",\n  \"status\": \"success\"\n}\n",
+    "stderr": ""
+  },
+  {
+    "id": "1vb94pg6c51VndyUzTSszbw3vtHa_uJVo",
+    "mimeType": "text/x-python",
+    "modifiedTime": "2026-05-06T05:06:32.923Z",
+    "name": "file_manager.py",
+    "parents": [
+      "1IAW7z9g7K6WMBX_LhP5oppGRWDvROc09"
+    ],
+    "size": "2544",
+    "webViewLink": "https://drive.google.com/file/d/1vb94pg6c51VndyUzTSszbw3vtHa_uJVo/view?usp=drivesdk",
+    "root": "skills_legacy",
+    "relative_path": "file_manager.py",
+    "destination": "skills_legacy/file_manager.py",
+    "exit_code": 0,
+    "status": "downloaded",
+    "stdout": "{\n  \"bytes\": 2544,\n  \"mimeType\": \"text/x-python\",\n  \"saved_file\": \"/home/ubuntu/Lorna-github/agents/skill_library/drive_folders/skills_legacy/file_manager.py\",\n  \"status\": \"success\"\n}\n",
+    "stderr": ""
+  },
+  {
+    "id": "1IkU6jitb4G4hZTSWjkDkE9W2qBjEauCr",
+    "mimeType": "text/x-python",
+    "modifiedTime": "2026-05-07T06:24:24.578Z",
+    "name": "github.py",
+    "parents": [
+      "1IAW7z9g7K6WMBX_LhP5oppGRWDvROc09"
+    ],
+    "size": "5001",
+    "webViewLink": "https://drive.google.com/file/d/1IkU6jitb4G4hZTSWjkDkE9W2qBjEauCr/view?usp=drivesdk",
+    "root": "skills_legacy",
+    "relative_path": "github.py",
+    "destination": "skills_legacy/github.py",
+    "exit_code": 0,
+    "status": "downloaded",
+    "stdout": "{\n  \"bytes\": 5001,\n  \"mimeType\": \"text/x-python\",\n  \"saved_file\": \"/home/ubuntu/Lorna-github/agents/skill_library/drive_folders/skills_legacy/github.py\",\n  \"status\": \"success\"\n}\n",
+    "stderr": ""
+  },
+  {
+    "id": "1SM6KVHnvHQPcB-_BoFjBWp1mILQgjhUZ",
+    "mimeType": "text/x-python",
+    "modifiedTime": "2026-05-07T06:24:38.690Z",
+    "name": "google_drive.py",
+    "parents": [
+      "1IAW7z9g7K6WMBX_LhP5oppGRWDvROc09"
+    ],
+    "size": "4564",
+    "webViewLink": "https://drive.google.com/file/d/1SM6KVHnvHQPcB-_BoFjBWp1mILQgjhUZ/view?usp=drivesdk",
+    "root": "skills_legacy",
+    "relative_path": "google_drive.py",
+    "destination": "skills_legacy/google_drive.py",
+    "exit_code": 0,
+    "status": "downloaded",
+    "stdout": "{\n  \"bytes\": 4564,\n  \"mimeType\": \"text/x-python\",\n  \"saved_file\": \"/home/ubuntu/Lorna-github/agents/skill_library/drive_folders/skills_legacy/google_drive.py\",\n  \"status\": \"success\"\n}\n",
+    "stderr": ""
+  },
+  {
+    "id": "1rgDkeQtHr-eidkTXSpV4CafwJJ25rlbF",
+    "mimeType": "text/x-python",
+    "modifiedTime": "2026-05-06T05:06:27.895Z",
+    "name": "web_search.py",
+    "parents": [
+      "1IAW7z9g7K6WMBX_LhP5oppGRWDvROc09"
+    ],
+    "size": "1743",
+    "webViewLink": "https://drive.google.com/file/d/1rgDkeQtHr-eidkTXSpV4CafwJJ25rlbF/view?usp=drivesdk",
+    "root": "skills_legacy",
+    "relative_path": "web_search.py",
+    "destination": "skills_legacy/web_search.py",
+    "exit_code": 0,
+    "status": "downloaded",
+    "stdout": "{\n  \"bytes\": 1743,\n  \"mimeType\": \"text/x-python\",\n  \"saved_file\": \"/home/ubuntu/Lorna-github/agents/skill_library/drive_folders/skills_legacy/web_search.py\",\n  \"status\": \"success\"\n}\n",
+    "stderr": ""
+  },
+  {
+    "id": "1lEAcdWi5MWJAbLOzCyK8eYM0vUyaonfK",
+    "mimeType": "text/markdown",
+    "modifiedTime": "2026-03-11T20:37:17.049Z",
+    "name": "SKILL.md",
+    "parents": [
+      "1KRlfhk4fjLkXwdCY5G57jLWMYVvz32Kz"
+    ],
+    "size": "3541",
+    "webViewLink": "https://drive.google.com/file/d/1lEAcdWi5MWJAbLOzCyK8eYM0vUyaonfK/view?usp=drivesdk",
+    "root": "skills_2026",
+    "relative_path": "gws-best-practices/SKILL.md",
+    "destination": "skills_2026/gws-best-practices/SKILL.md",
+    "exit_code": 0,
+    "status": "downloaded",
+    "stdout": "{\n  \"bytes\": 3541,\n  \"mimeType\": \"text/markdown\",\n  \"saved_file\": \"/home/ubuntu/Lorna-github/agents/skill_library/drive_folders/skills_2026/gws-best-practices/SKILL.md\",\n  \"status\": \"success\"\n}\n",
+    "stderr": ""
+  },
+  {
+    "id": "17Y5zRl0WtumYXuNF4D8C6hQPtUh-4VLi",
+    "mimeType": "text/markdown",
+    "modifiedTime": "2026-03-11T20:37:17.085Z",
+    "name": "SKILL.md",
+    "parents": [
+      "1abvvVSc6nDgW3kM7EQ_F1iKBy1J_pf75"
+    ],
+    "size": "10326",
+    "webViewLink": "https://drive.google.com/file/d/17Y5zRl0WtumYXuNF4D8C6hQPtUh-4VLi/view?usp=drivesdk",
+    "root": "skills_2026",
+    "relative_path": "skill-creator/SKILL.md",
+    "destination": "skills_2026/skill-creator/SKILL.md",
+    "exit_code": 0,
+    "status": "downloaded",
+    "stdout": "{\n  \"bytes\": 10326,\n  \"mimeType\": \"text/markdown\",\n  \"saved_file\": \"/home/ubuntu/Lorna-github/agents/skill_library/drive_folders/skills_2026/skill-creator/SKILL.md\",\n  \"status\": \"success\"\n}\n",
+    "stderr": ""
+  },
+  {
+    "id": "1bmtwCXV6kLBxawfkEePsdf6l7oYnBcqr",
+    "mimeType": "text/markdown",
+    "modifiedTime": "2026-03-11T20:37:17.085Z",
+    "name": "output-patterns.md",
+    "parents": [
+      "12hROkyaX3dlZAKG5rufg5xRtOZh6YNzx"
+    ],
+    "size": "1812",
+    "webViewLink": "https://drive.google.com/file/d/1bmtwCXV6kLBxawfkEePsdf6l7oYnBcqr/view?usp=drivesdk",
+    "root": "skills_2026",
+    "relative_path": "skill-creator/references/output-patterns.md",
+    "destination": "skills_2026/skill-creator/references/output-patterns.md",
+    "exit_code": 0,
+    "status": "downloaded",
+    "stdout": "{\n  \"bytes\": 1812,\n  \"mimeType\": \"text/markdown\",\n  \"saved_file\": \"/home/ubuntu/Lorna-github/agents/skill_library/drive_folders/skills_2026/skill-creator/references/output-patterns.md\",\n  \"status\": \"success\"\n}\n",
+    "stderr": ""
+  },
+  {
+    "id": "1W3Hc9recEJHUNywNdrFN1wTIy5Vwg4-M",
+    "mimeType": "text/markdown",
+    "modifiedTime": "2026-03-11T20:37:17.085Z",
+    "name": "progressive-disclosure-patterns.md",
+    "parents": [
+      "12hROkyaX3dlZAKG5rufg5xRtOZh6YNzx"
+    ],
+    "size": "2748",
+    "webViewLink": "https://drive.google.com/file/d/1W3Hc9recEJHUNywNdrFN1wTIy5Vwg4-M/view?usp=drivesdk",
+    "root": "skills_2026",
+    "relative_path": "skill-creator/references/progressive-disclosure-patterns.md",
+    "destination": "skills_2026/skill-creator/references/progressive-disclosure-patterns.md",
+    "exit_code": 0,
+    "status": "downloaded",
+    "stdout": "{\n  \"bytes\": 2748,\n  \"mimeType\": \"text/markdown\",\n  \"saved_file\": \"/home/ubuntu/Lorna-github/agents/skill_library/drive_folders/skills_2026/skill-creator/references/progressive-disclosure-patterns.md\",\n  \"status\": \"success\"\n}\n",
+    "stderr": ""
+  },
+  {
+    "id": "1Y5XSMAu3c0cVKuBdH0qKc_ybBqeO69go",
+    "mimeType": "text/markdown",
+    "modifiedTime": "2026-03-11T20:37:17.085Z",
+    "name": "workflows.md",
+    "parents": [
+      "12hROkyaX3dlZAKG5rufg5xRtOZh6YNzx"
+    ],
+    "size": "816",
+    "webViewLink": "https://drive.google.com/file/d/1Y5XSMAu3c0cVKuBdH0qKc_ybBqeO69go/view?usp=drivesdk",
+    "root": "skills_2026",
+    "relative_path": "skill-creator/references/workflows.md",
+    "destination": "skills_2026/skill-creator/references/workflows.md",
+    "exit_code": 0,
+    "status": "downloaded",
+    "stdout": "{\n  \"bytes\": 816,\n  \"mimeType\": \"text/markdown\",\n  \"saved_file\": \"/home/ubuntu/Lorna-github/agents/skill_library/drive_folders/skills_2026/skill-creator/references/workflows.md\",\n  \"status\": \"success\"\n}\n",
+    "stderr": ""
+  },
+  {
+    "id": "17Y5zRl0WtumYXuNF4D8C6hQPtUh-4VLi",
+    "mimeType": "text/markdown",
+    "modifiedTime": "2026-03-11T20:37:17.085Z",
+    "name": "SKILL.md",
+    "parents": [
+      "1abvvVSc6nDgW3kM7EQ_F1iKBy1J_pf75"
+    ],
+    "size": "10326",
+    "webViewLink": "https://drive.google.com/file/d/17Y5zRl0WtumYXuNF4D8C6hQPtUh-4VLi/view?usp=drivesdk",
+    "root": "skill_creator",
+    "relative_path": "SKILL.md",
+    "destination": "skill_creator/SKILL.md",
+    "exit_code": 0,
+    "status": "downloaded",
+    "stdout": "{\n  \"bytes\": 10326,\n  \"mimeType\": \"text/markdown\",\n  \"saved_file\": \"/home/ubuntu/Lorna-github/agents/skill_library/drive_folders/skill_creator/SKILL.md\",\n  \"status\": \"success\"\n}\n",
+    "stderr": ""
+  },
+  {
+    "id": "1bmtwCXV6kLBxawfkEePsdf6l7oYnBcqr",
+    "mimeType": "text/markdown",
+    "modifiedTime": "2026-03-11T20:37:17.085Z",
+    "name": "output-patterns.md",
+    "parents": [
+      "12hROkyaX3dlZAKG5rufg5xRtOZh6YNzx"
+    ],
+    "size": "1812",
+    "webViewLink": "https://drive.google.com/file/d/1bmtwCXV6kLBxawfkEePsdf6l7oYnBcqr/view?usp=drivesdk",
+    "root": "skill_creator",
+    "relative_path": "references/output-patterns.md",
+    "destination": "skill_creator/references/output-patterns.md",
+    "exit_code": 0,
+    "status": "downloaded",
+    "stdout": "{\n  \"bytes\": 1812,\n  \"mimeType\": \"text/markdown\",\n  \"saved_file\": \"/home/ubuntu/Lorna-github/agents/skill_library/drive_folders/skill_creator/references/output-patterns.md\",\n  \"status\": \"success\"\n}\n",
+    "stderr": ""
+  },
+  {
+    "id": "1W3Hc9recEJHUNywNdrFN1wTIy5Vwg4-M",
+    "mimeType": "text/markdown",
+    "modifiedTime": "2026-03-11T20:37:17.085Z",
+    "name": "progressive-disclosure-patterns.md",
+    "parents": [
+      "12hROkyaX3dlZAKG5rufg5xRtOZh6YNzx"
+    ],
+    "size": "2748",
+    "webViewLink": "https://drive.google.com/file/d/1W3Hc9recEJHUNywNdrFN1wTIy5Vwg4-M/view?usp=drivesdk",
+    "root": "skill_creator",
+    "relative_path": "references/progressive-disclosure-patterns.md",
+    "destination": "skill_creator/references/progressive-disclosure-patterns.md",
+    "exit_code": 0,
+    "status": "downloaded",
+    "stdout": "{\n  \"bytes\": 2748,\n  \"mimeType\": \"text/markdown\",\n  \"saved_file\": \"/home/ubuntu/Lorna-github/agents/skill_library/drive_folders/skill_creator/references/progressive-disclosure-patterns.md\",\n  \"status\": \"success\"\n}\n",
+    "stderr": ""
+  },
+  {
+    "id": "1Y5XSMAu3c0cVKuBdH0qKc_ybBqeO69go",
+    "mimeType": "text/markdown",
+    "modifiedTime": "2026-03-11T20:37:17.085Z",
+    "name": "workflows.md",
+    "parents": [
+      "12hROkyaX3dlZAKG5rufg5xRtOZh6YNzx"
+    ],
+    "size": "816",
+    "webViewLink": "https://drive.google.com/file/d/1Y5XSMAu3c0cVKuBdH0qKc_ybBqeO69go/view?usp=drivesdk",
+    "root": "skill_creator",
+    "relative_path": "references/workflows.md",
+    "destination": "skill_creator/references/workflows.md",
+    "exit_code": 0,
+    "status": "downloaded",
+    "stdout": "{\n  \"bytes\": 816,\n  \"mimeType\": \"text/markdown\",\n  \"saved_file\": \"/home/ubuntu/Lorna-github/agents/skill_library/drive_folders/skill_creator/references/workflows.md\",\n  \"status\": \"success\"\n}\n",
+    "stderr": ""
+  }
+]

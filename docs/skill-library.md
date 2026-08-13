@@ -6,7 +6,8 @@ Lorna2 includes a collected skill library at `agents/skill_library/`. This libra
 
 | Library root | Contents |
 |---|---|
-| `drive/` | Additional Drive resources discovered through the skill inventory. `manifest.json` records Drive IDs, source URLs, types, download status, and folder references. |
+| `drive/` | Direct Drive resources discovered through the skill inventory. `manifest.json` records their Drive IDs, source URLs, types, and download status. |
+| `drive_folders/` | Every file recursively collected from the five remaining Drive skill folders. `collection_manifest.json` records the source IDs and relative paths. |
 | `omnipc/` | Skill and code resources from the `OMNI PC` and `OMNI PC (1)` Google Drive Skills folders. `manifest.json` records their source folder and Drive IDs. |
 | `github/omega-skills/` | Full working-tree copy of the public `bekingdomcomejoker-cpu/omega-skills` repository, excluding its Git metadata. |
 | `termux/` | `SKILL.md` documents collected from the connected device’s `omega-skills`, `omega/dropbox`, and Gemini CLI skill locations. |
@@ -34,4 +35,4 @@ When a text resource is active, its exact stored text is supplied to the selecte
 
 ## Updating the library
 
-The Drive and OmniPC source manifests preserve Drive IDs and paths for source tracking. The public GitHub source is tracked as a repository snapshot. The Termux source preserves the original source-directory layout below `termux/`.
+The Drive, recursive Drive-folder, and OmniPC source manifests preserve Drive IDs and paths for source tracking. The public GitHub source is tracked as a repository snapshot. The Termux source preserves the original source-directory layout below `termux/`.

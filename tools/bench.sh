@@ -17,9 +17,11 @@ source "$LORNA_DIR/lib/registry.sh"
 TMP_DIR="$LORNA_TMP/bench"
 RESULTS_FILE="$HOME/lorna_bench_results.txt"
 BENCH_PROMPT="Explain in one short paragraph what RAM is."
-BENCH_TOKENS=32
-# Every benchmark process is non-interactive: it receives /exit on stdin and
-# has a hard deadline, so no model can remain waiting for a follow-up reply.
+# 80 tokens lets the small local models finish a short paragraph before the
+# scripted /exit closes their interactive prompt.
+BENCH_TOKENS=80
+# Every benchmark process is non-interactive: /exit is queued after the prompt
+# and token limit, with a hard deadline as a final guard.
 BENCH_EXIT_INPUT="/exit"
 BENCH_TIMEOUT_SECONDS="${LORNA_BENCH_TIMEOUT_SECONDS:-180}"
 BENCH_LOCK_DIR="$LORNA_TMP/bench.lock"
@@ -51,37 +53,43 @@ release_bench_lock() {
   rm -rf "$BENCH_LOCK_DIR"
 }
 
-# ─── PARSE t/s FROM llama.cpp STDERR ────────────────────────
-# BUG FIXED: Correct patterns for actual llama.cpp output format.
-# Captures the final number before "tokens per second" on each line.
-parse_tps_from_stderr() {
-  local stderr_file="$1"
-  local prompt_tps="" gen_tps=""
+# ─── PARSE t/s FROM llama.cpp OUTPUT ───────────────────────
+# Supports both standard llama.cpp timing lines and the interactive runner's
+# "[ Prompt: X t/s | Generation: Y t/s ]" summary.
+parse_tps_from_logs() {
+  local prompt_tps="" gen_tps="" logs
+  logs=$(cat "$@" 2>/dev/null)
 
-  # Match lines containing "prompt eval time" and extract last float
-  local prompt_line
-  prompt_line=$(grep "prompt eval time" "$stderr_file" 2>/dev/null | tail -1)
+  local prompt_line gen_line
+  prompt_line=$(printf '%s\n' "$logs" | grep -i "prompt eval time" | tail -1)
   if [[ -n "$prompt_line" ]]; then
-    prompt_tps=$(echo "$prompt_line" | grep -oE '[0-9]+\.[0-9]+[[:space:]]+tokens per second' \
+    prompt_tps=$(printf '%s\n' "$prompt_line" | grep -oE '[0-9]+\.[0-9]+[[:space:]]+tokens per second' \
       | grep -oE '^[0-9]+\.[0-9]+' | tail -1)
   fi
 
-  # Match "eval time" lines (NOT prompt eval) — that's generation
-  local gen_line
-  gen_line=$(grep "eval time" "$stderr_file" 2>/dev/null | grep -v "prompt" | tail -1)
+  gen_line=$(printf '%s\n' "$logs" | grep -i "eval time" | grep -vi "prompt" | tail -1)
   if [[ -n "$gen_line" ]]; then
-    gen_tps=$(echo "$gen_line" | grep -oE '[0-9]+\.[0-9]+[[:space:]]+tokens per second' \
+    gen_tps=$(printf '%s\n' "$gen_line" | grep -oE '[0-9]+\.[0-9]+[[:space:]]+tokens per second' \
       | grep -oE '^[0-9]+\.[0-9]+' | tail -1)
   fi
 
-  # Fallback: any "t/s" style output (newer llama.cpp versions)
   if [[ -z "$prompt_tps" ]]; then
-    prompt_tps=$(grep -E "prompt.*[0-9]+\.[0-9]+ t/s" "$stderr_file" 2>/dev/null \
+    prompt_tps=$(printf '%s\n' "$logs" | grep -ioE 'Prompt:[[:space:]]*[0-9]+(\.[0-9]+)?[[:space:]]*t/s' \
+      | grep -oE '[0-9]+(\.[0-9]+)?' | tail -1)
+  fi
+  if [[ -z "$gen_tps" ]]; then
+    gen_tps=$(printf '%s\n' "$logs" | grep -ioE 'Generation:[[:space:]]*[0-9]+(\.[0-9]+)?[[:space:]]*t/s' \
+      | grep -oE '[0-9]+(\.[0-9]+)?' | tail -1)
+  fi
+
+  # Fallback for alternate modern formats.
+  if [[ -z "$prompt_tps" ]]; then
+    prompt_tps=$(printf '%s\n' "$logs" | grep -iE "prompt.*[0-9]+\.[0-9]+ t/s" \
       | grep -oE '[0-9]+\.[0-9]+ t/s' | grep -oE '^[0-9]+\.[0-9]+' | tail -1)
   fi
   if [[ -z "$gen_tps" ]]; then
-    gen_tps=$(grep -E "(eval|generate).*[0-9]+\.[0-9]+ t/s" "$stderr_file" 2>/dev/null \
-      | grep -v "prompt" | grep -oE '[0-9]+\.[0-9]+ t/s' | grep -oE '^[0-9]+\.[0-9]+' | tail -1)
+    gen_tps=$(printf '%s\n' "$logs" | grep -iE "(eval|generate).*[0-9]+\.[0-9]+ t/s" \
+      | grep -vi "prompt" | grep -oE '[0-9]+\.[0-9]+ t/s' | grep -oE '^[0-9]+\.[0-9]+' | tail -1)
   fi
 
   echo "${prompt_tps:-?}|${gen_tps:-?}"
@@ -116,10 +124,16 @@ bench_model() {
   [[ "$_LORNA_HAS_NO_WARMUP" -eq 1 ]] && extra_flags+=(--no-warmup)
   [[ "$_LORNA_HAS_CACHE_TYPE" -eq 1 ]] && extra_flags+=(--cache-type-k q4_0 --cache-type-v q4_0)
 
+  local log_stem stderr_file stdout_file
+  log_stem="${name//[^[:alnum:]._-]/_}"
+  stderr_file="$TMP_DIR/${log_stem}.stderr.txt"
+  stdout_file="$TMP_DIR/${log_stem}.stdout.txt"
+  rm -f "$stderr_file" "$stdout_file"
+
   local start_ms end_ms llama_status
   start_ms=$(date +%s%3N)
-  # Feed /exit to this individual llama-cli process.  The token cap and
-  # timeout remain as independent guards if a model ignores stdin.
+  # The fixed token budget completes the response; /exit is then consumed at
+  # the interactive prompt so the model process closes without waiting.
   printf '%s\n' "$BENCH_EXIT_INPUT" | timeout "${BENCH_TIMEOUT_SECONDS}s" "$LLAMA_BIN" \
     -m "$model" \
     -f "$TMP_DIR/bench_prompt.txt" \
@@ -130,7 +144,7 @@ bench_model() {
     --temp 0.1 \
     --no-display-prompt \
     "${extra_flags[@]}" \
-    2>"$TMP_DIR/bench_stderr.txt" > "$TMP_DIR/bench_stdout.txt"
+    2>"$stderr_file" > "$stdout_file"
   llama_status=${PIPESTATUS[1]}
   end_ms=$(date +%s%3N)
   local elapsed_ms=$(( end_ms - start_ms ))
@@ -138,6 +152,9 @@ bench_model() {
   if (( llama_status != 0 )); then
     local failure_class="ERROR(${llama_status})"
     (( llama_status == 124 )) && failure_class="TIMEOUT"
+    if grep -qiE 'corrupted or incomplete|not within the file bounds' "$stderr_file"; then
+      failure_class="CORRUPT"
+    fi
     local error_line="${name}|${size_mb}|?|?|${elapsed_ms}ms|${failure_class}"
     echo "$error_line"
     echo "$error_line" >> "$RESULTS_FILE"
@@ -146,7 +163,7 @@ bench_model() {
   fi
 
   local tps_result
-  tps_result=$(parse_tps_from_stderr "$TMP_DIR/bench_stderr.txt")
+  tps_result=$(parse_tps_from_logs "$stdout_file" "$stderr_file")
   local prompt_tps="${tps_result%%|*}"
   local gen_tps="${tps_result##*|}"
 
@@ -257,7 +274,7 @@ run_bench() {
     IFS='|' read -r rname rmb rprompt rgen relapsed rclass <<< "$result"
     local cc=$GREEN
     [[ "$rclass" == "CAUTION" || "$rclass" == "RISKY" ]] && cc=$YELLOW
-    [[ "$rclass" == "SKIPPED" || "$rclass" == "UNSAFE" || "$rclass" == ERROR* ]] && cc=$RED
+    [[ "$rclass" == "SKIPPED" || "$rclass" == "UNSAFE" || "$rclass" == "CORRUPT" || "$rclass" == ERROR* ]] && cc=$RED
     printf "${cc}gen=%-6s${NC}  prompt=%-6s  %s\n" "$rgen" "$rprompt" "$relapsed"
   done
 

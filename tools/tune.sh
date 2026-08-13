@@ -13,6 +13,7 @@ source "$LORNA_DIR/lib/registry.sh"
 
 RESULTS_FILE="$HOME/lorna_tune_results_$(date +%Y%m%d_%H%M%S).txt"
 TEST_PROMPT="Explain the convergence of the p-series and relate it to the Riemann zeta function."
+TUNE_TIMEOUT_SECONDS="${LORNA_TUNE_TIMEOUT_SECONDS:-180}"
 
 run_tune() {
   local mode="${1:-quick}"
@@ -101,6 +102,9 @@ run_tune() {
     echo "─────────────────────────────────────────────────────────────────────────────────────"
   } > "$RESULTS_FILE"
 
+  local perf_flags=()
+  "$LLAMA_BIN" --help 2>&1 | grep -q -- '--perf' && perf_flags+=(--perf)
+
   local test_num=0
   local best_gen_tps=0
   local best_config=""
@@ -126,7 +130,9 @@ run_tune() {
           local start_ms end_ms
           start_ms=$(date +%s%3N)
 
-          "$LLAMA_BIN" \
+          # Finish the fixed response, then consume /exit at the interactive
+          # prompt.  The deadline prevents a single configuration from hanging.
+          printf '/exit\n' | timeout "${TUNE_TIMEOUT_SECONDS}s" "$LLAMA_BIN" \
             -m "$model" \
             -f "$LORNA_TMP/tune_prompt.txt" \
             -n 100 \
@@ -135,9 +141,10 @@ run_tune() {
             -b "$batch" \
             --temp "$temp" \
             --no-display-prompt \
-            2>"$LORNA_TMP/tune_stderr.txt" > "$LORNA_TMP/tune_stdout.txt" < /dev/null
+            "${perf_flags[@]}" \
+            2>"$LORNA_TMP/tune_stderr.txt" > "$LORNA_TMP/tune_stdout.txt"
 
-          local exit_code=$?
+          local exit_code=${PIPESTATUS[1]}
           end_ms=$(date +%s%3N)
           local elapsed_ms=$(( end_ms - start_ms ))
           local elapsed_s=$(awk "BEGIN{printf \"%.2f\", $elapsed_ms/1000}")
@@ -153,10 +160,12 @@ run_tune() {
           # Parse t/s from stderr
           local prompt_tps gen_tps status
           if [[ "$exit_code" -eq 0 ]]; then
-            prompt_tps=$(grep -oE '[0-9]+\.[0-9]+[[:space:]]+tokens per second' "$LORNA_TMP/tune_stderr.txt" 2>/dev/null \
-              | head -1 | grep -oE '^[0-9]+\.[0-9]+' || echo "?")
-            gen_tps=$(grep -oE '[0-9]+\.[0-9]+[[:space:]]+tokens per second' "$LORNA_TMP/tune_stderr.txt" 2>/dev/null \
-              | tail -1 | grep -oE '^[0-9]+\.[0-9]+' || echo "?")
+            prompt_tps=$(cat "$LORNA_TMP/tune_stdout.txt" "$LORNA_TMP/tune_stderr.txt" 2>/dev/null \
+              | grep -ioE 'Prompt:[[:space:]]*[0-9]+(\.[0-9]+)?[[:space:]]*t/s|prompt eval time.*[0-9]+\.[0-9]+[[:space:]]+tokens per second' \
+              | grep -oE '[0-9]+(\.[0-9]+)?' | tail -1 || echo "?")
+            gen_tps=$(cat "$LORNA_TMP/tune_stdout.txt" "$LORNA_TMP/tune_stderr.txt" 2>/dev/null \
+              | grep -ioE 'Generation:[[:space:]]*[0-9]+(\.[0-9]+)?[[:space:]]*t/s|eval time.*[0-9]+\.[0-9]+[[:space:]]+tokens per second' \
+              | grep -oE '[0-9]+(\.[0-9]+)?' | tail -1 || echo "?")
             status="OK"
             
             # Track best config

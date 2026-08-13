@@ -120,9 +120,10 @@ bench_model() {
   # 4 GB device, leaving the benchmark on "Loading model..." or causing OOM.
   read -r ctx batch threads _ <<< "$(get_model_tier "$model")"
   probe_binary_flags
-  local extra_flags=()
+  local extra_flags=() perf_flags=()
   [[ "$_LORNA_HAS_NO_WARMUP" -eq 1 ]] && extra_flags+=(--no-warmup)
   [[ "$_LORNA_HAS_CACHE_TYPE" -eq 1 ]] && extra_flags+=(--cache-type-k q4_0 --cache-type-v q4_0)
+  "$LLAMA_BIN" --help 2>&1 | grep -q -- '--perf' && perf_flags+=(--perf)
 
   local log_stem stderr_file stdout_file
   log_stem="${name//[^[:alnum:]._-]/_}"
@@ -144,6 +145,7 @@ bench_model() {
     --temp 0.1 \
     --no-display-prompt \
     "${extra_flags[@]}" \
+    "${perf_flags[@]}" \
     2>"$stderr_file" > "$stdout_file"
   llama_status=${PIPESTATUS[1]}
   end_ms=$(date +%s%3N)

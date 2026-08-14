@@ -20,6 +20,8 @@ MEMORY_PATH = AGENT_DIR / "benchmark_memory.json"
 PRESET_STATE_PATH = Path.home() / ".lorna_v2" / "optimized_presets.json"
 MODELS_DIR = Path.home() / "models"
 DEFAULT_PROMPT = "Explain the convergence of the p-series and relate it to the Riemann zeta function."
+MOONDREAM_PROMPT = "Describe the image. Identify the blue rectangle, green circle, and red triangle."
+MOONDREAM_FIXTURE = AGENT_DIR / "benchmark_assets" / "lorna_moondream_fixture.png"
 DEFAULT_CONFIG = {
     "ctx": 512,
     "threads": 4,
@@ -81,6 +83,10 @@ def default_memory() -> dict[str, Any]:
                 "status": "safe_candidate",
                 "notes": "Observed interactive generation around 13.0 t/s in a user-captured Termux session; configuration was not recorded.",
             },
+            "moondream2-050824-q5k.gguf": {
+                "status": "safe_candidate",
+                "notes": "Vision model; pair with moondream2-mmproj-050824-f16.gguf and use Lorna2's image fixture for benchmark runs.",
+            },
             "tinydolphin-2.8-1.1b-q4_k_m.gguf": {
                 "status": "corrupt",
                 "notes": "llama.cpp reported tensor data outside file bounds; do not tune until the GGUF is replaced.",
@@ -102,8 +108,11 @@ def load_memory() -> dict[str, Any]:
         memory = json.loads(MEMORY_PATH.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         memory = default_memory()
-    for key, value in default_memory().items():
+    defaults = default_memory()
+    for key, value in defaults.items():
         memory.setdefault(key, value)
+    for model_name, details in defaults["known_models"].items():
+        memory["known_models"].setdefault(model_name, details)
     memory["schema_version"] = max(2, int(memory.get("schema_version", 1)))
     return memory
 
@@ -184,6 +193,8 @@ def resolve_model(query: str) -> Path | None:
         "qwen": "qwen2.5-0.5b-instruct-q4_k_m.gguf",
         "smollm": "smollm2-360m-instruct-q4_k_m.gguf",
         "smol": "smollm2-360m-instruct-q4_k_m.gguf",
+        "moondream": "moondream2-050824-q5k.gguf",
+        "moon": "moondream2-050824-q5k.gguf",
         "tinydolphin": "tinydolphin-2.8-1.1b-q4_k_m.gguf",
     }
     target = aliases.get(query, query)
@@ -192,6 +203,22 @@ def resolve_model(query: str) -> Path | None:
             return path
     matches = [path for path in models if target in path.name.lower()]
     return matches[0] if len(matches) == 1 else None
+
+
+def is_moondream_model(model: Path) -> bool:
+    name = model.name.lower()
+    return "moondream" in name and "mmproj" not in name
+
+
+def moondream_projector(model: Path) -> Path | None:
+    """Return the colocated multimodal projector required by a Moondream GGUF."""
+    if not is_moondream_model(model):
+        return None
+    candidates = sorted(
+        path for path in model.parent.glob("*.gguf")
+        if "moondream" in path.name.lower() and "mmproj" in path.name.lower()
+    )
+    return candidates[0] if candidates else None
 
 
 def llama_binary() -> str | None:
@@ -279,6 +306,10 @@ def classify_failure(text: str, returncode: int) -> str:
 
 def baseline_config(memory: dict[str, Any], model_name: str) -> dict[str, Any]:
     config = dict(DEFAULT_CONFIG)
+    if "moondream" in model_name.lower():
+        # Moondream2's established multimodal invocation uses a 2048-token
+        # context and a low temperature; retain that as its safe baseline.
+        config.update({"ctx": 2048, "batch": 32, "ubatch": 32, "temperature": 0.1})
     recommendation = memory.get("recommendations", {}).get(model_name, {})
     config.update(recommendation.get("config", {}))
     config.setdefault("threads_batch", config.get("threads", 4))
@@ -286,7 +317,7 @@ def baseline_config(memory: dict[str, Any], model_name: str) -> dict[str, Any]:
     return config
 
 
-def profile_configurations(profile: str, base: dict[str, Any]) -> list[dict[str, Any]]:
+def profile_configurations(profile: str, base: dict[str, Any], *, vision: bool = False) -> list[dict[str, Any]]:
     """Create a one-variable-at-a-time matrix around the current best candidate."""
     configs: list[dict[str, Any]] = []
     seen: set[str] = set()
@@ -302,14 +333,15 @@ def profile_configurations(profile: str, base: dict[str, Any]) -> list[dict[str,
         configs.append(config)
 
     if profile == "core":
-        for ctx in (512, 1024):
+        for ctx in ((1024, 2048) if vision else (512, 1024)):
             for threads in (2, 4):
                 for batch in (32, 64):
                     add(f"core ctx={ctx} t={threads} b={batch}", ctx=ctx, threads=threads,
-                        threads_batch=threads, batch=batch, ubatch=min(batch, 64), temperature=0.2)
+                        threads_batch=threads, batch=batch, ubatch=min(batch, 64),
+                        temperature=base.get("temperature", 0.2))
     elif profile == "runtime":
         add("baseline")
-        for ctx in (256, 384, 768, 1024, 1536):
+        for ctx in ((1024, 1536, 2048, 2560) if vision else (256, 384, 768, 1024, 1536)):
             add(f"ctx={ctx}", ctx=ctx)
         for threads in (1, 2, 3, 4):
             add(f"threads={threads}", threads=threads, threads_batch=threads)
@@ -385,13 +417,27 @@ def config_summary(config: dict[str, Any]) -> str:
     )
 
 
-def build_command(binary: str, model: Path, prompt_file: Path, config: dict[str, Any], tokens: int, help_text: str) -> list[str]:
+def build_command(
+    binary: str,
+    model: Path,
+    prompt_file: Path,
+    config: dict[str, Any],
+    tokens: int,
+    help_text: str,
+    *,
+    projector: Path | None = None,
+    image_file: Path | None = None,
+) -> list[str]:
     command = [
         binary, "-m", str(model), "-f", str(prompt_file), "-n", str(tokens),
         "-c", str(config["ctx"]), "-t", str(config["threads"]),
         "-b", str(config["batch"]), "--temp", str(config["temperature"]),
         "--no-display-prompt", "--perf",
     ]
+    if projector is not None:
+        command.extend(["--mmproj", str(projector)])
+    if image_file is not None:
+        command.extend(["--image", str(image_file)])
     if supported_flag(help_text, "--threads-batch"):
         command.extend(["--threads-batch", str(config["threads_batch"])])
     if supported_flag(help_text, "--ubatch-size"):
@@ -411,11 +457,27 @@ def run_configuration(model: Path, config: dict[str, Any], profile: str, help_te
     binary = llama_binary()
     if not binary:
         return {"status": "ERROR(no_llama_cli)"}
+    projector: Path | None = None
+    image_file: Path | None = None
+    prompt = DEFAULT_PROMPT
+    if is_moondream_model(model):
+        projector = moondream_projector(model)
+        image_file = MOONDREAM_FIXTURE
+        if projector is None:
+            return {"status": "ERROR(missing_mmproj)", "stderr_tail": "Matching Moondream mmproj GGUF was not found."}
+        if not image_file.is_file():
+            return {"status": "ERROR(missing_image_fixture)", "stderr_tail": "The bundled Moondream image fixture is missing."}
+        if not (supported_flag(help_text, "--mmproj") and supported_flag(help_text, "--image")):
+            return {
+                "status": "UNSUPPORTED",
+                "stderr_tail": "The installed llama-cli does not advertise both --mmproj and --image.",
+            }
+        prompt = MOONDREAM_PROMPT
     tokens = PROFILE_TOKENS[profile]
     with tempfile.TemporaryDirectory(prefix="lorna2_benchmark_") as temp_dir:
         prompt_file = Path(temp_dir) / "prompt.txt"
-        prompt_file.write_text(DEFAULT_PROMPT + "\n", encoding="utf-8")
-        command = build_command(binary, model, prompt_file, config, tokens, help_text)
+        prompt_file.write_text(prompt + "\n", encoding="utf-8")
+        command = build_command(binary, model, prompt_file, config, tokens, help_text, projector=projector, image_file=image_file)
         started = time.monotonic()
         try:
             completed = subprocess.run(
@@ -472,8 +534,15 @@ def run_sweep(model_query: str, profile: str = "core") -> str:
         return f"Benchmark deferred: only {available}MB RAM available ({swap}MB swap used). Free memory, then retry."
 
     base = baseline_config(memory, model.name)
-    configurations = profile_configurations(profile, base)
+    vision_model = is_moondream_model(model)
+    configurations = profile_configurations(profile, base, vision=vision_model)
     help_text = llama_help()
+    if vision_model and moondream_projector(model) is None:
+        return f"Moondream2 benchmark deferred: matching mmproj GGUF is missing next to {model.name}."
+    if vision_model and not MOONDREAM_FIXTURE.is_file():
+        return "Moondream2 benchmark deferred: the bundled image fixture is missing. Reinstall the Lorna update."
+    if vision_model and not (supported_flag(help_text, "--mmproj") and supported_flag(help_text, "--image")):
+        return "Moondream2 benchmark unsupported: this llama-cli build must advertise both --mmproj and --image."
     run = {
         "id": f"{profile}-{int(time.time())}",
         "timestamp": now_iso(),
@@ -482,7 +551,9 @@ def run_sweep(model_query: str, profile: str = "core") -> str:
         "model_bytes": model.stat().st_size,
         "memory_before_mb": available,
         "swap_used_before_mb": swap,
-        "prompt": DEFAULT_PROMPT,
+        "prompt": MOONDREAM_PROMPT if vision_model else DEFAULT_PROMPT,
+        "mode": "vision" if vision_model else "text",
+        "projector": str(moondream_projector(model)) if vision_model else None,
         "base_config": base,
         "configurations": [],
     }
@@ -584,6 +655,8 @@ def apply_recommendation(model_query: str, verify: bool = True) -> str:
     model = resolve_model(model_query)
     if model is None:
         return "Unknown model. Use `benchmark models` to list selectable model names."
+    if is_moondream_model(model):
+        return "Moondream2 is a paired vision model. Its benchmark result is retained, but it is not applied to Lorna's text-only normal runners."
     memory = load_memory()
     recommendation = memory.get("recommendations", {}).get(model.name)
     if not recommendation:
@@ -744,10 +817,11 @@ def command(command_text: str) -> str:
             "  benchmark profiles                       describe staged parameter profiles\n"
             "  benchmark sweep qwen [core|runtime|sampling]\n"
             "  benchmark sweep smollm [core|runtime|sampling]\n"
-            "  benchmark apply <qwen|smollm>            verify and activate the retained best preset\n"
-            "  benchmark optimize <qwen|smollm|all>     run staged profiles then apply verified winners\n"
-            "  benchmark active <qwen|smollm>           print the active optimized preset\n"
-            "  benchmark rollback <qwen|smollm>         restore the previous preset or auto tier\n"
+            "  benchmark sweep moondream [core|runtime|sampling]  paired vision-model benchmark\n"
+            "  benchmark apply <qwen|smollm>            verify and activate the retained best text preset\n"
+            "  benchmark optimize <qwen|smollm|moondream|all>  run staged profiles; text presets are applied when verified\n"
+            "  benchmark active <qwen|smollm>           print the active optimized text preset\n"
+            "  benchmark rollback <qwen|smollm>         restore the previous text preset or auto tier\n"
             "  benchmark memory                         show retained benchmark recommendations"
         )
     if action == "models":
@@ -762,7 +836,7 @@ def command(command_text: str) -> str:
         return f"RAM available: {available}/{total}MB; swap used: {swap_used_mb()}MB; llama-cli: {binary}"
     if action == "sweep":
         if len(parts) < 2:
-            return "Usage: benchmark sweep <qwen|smollm> [core|runtime|sampling]"
+            return "Usage: benchmark sweep <qwen|smollm|moondream> [core|runtime|sampling]"
         return run_sweep(parts[1], parts[2].lower() if len(parts) > 2 else "core")
     if action == "apply":
         if len(parts) != 2:
@@ -770,7 +844,7 @@ def command(command_text: str) -> str:
         return apply_recommendation(parts[1], verify=True)
     if action == "optimize":
         if len(parts) != 2:
-            return "Usage: benchmark optimize <qwen|smollm|all>"
+            return "Usage: benchmark optimize <qwen|smollm|moondream|all>"
         return optimize_all() if parts[1].lower() == "all" else optimize_model(parts[1])
     if action == "active":
         if len(parts) != 2:

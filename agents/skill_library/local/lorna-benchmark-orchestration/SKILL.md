@@ -28,7 +28,10 @@ benchmark profiles
 benchmark sweep qwen core
 benchmark sweep qwen runtime
 benchmark sweep qwen sampling
-benchmark sweep smollm core
+benchmark sweep smollm sampling
+benchmark sweep moondream core
+benchmark sweep moondream runtime
+benchmark sweep moondream sampling
 benchmark apply qwen
 benchmark optimize qwen
 benchmark optimize all
@@ -51,7 +54,7 @@ Recommend only a configuration that completed all required tests without a crash
 
 ## Current Device Knowledge
 
-The phone is a Redmi 13C running Termux with roughly 3.7 GB usable RAM. Known safe candidates include Qwen 2.5 0.5B and SmolLM2 360M. Prefer SmolLM2 when responsiveness is the priority. For SmolLM2, run `core`, then `runtime`, then the expanded `sampling` profile, and finally `apply`; use `optimize smollm` to run this sequence with resume behavior. TinyDolphin 2.8 1.1B is currently recorded as corrupt and must be skipped until its GGUF is replaced.
+The phone is a Redmi 13C running Termux with roughly 3.7 GB usable RAM. Known safe candidates include Qwen 2.5 0.5B, SmolLM2 360M, and the paired Moondream2 Q5K vision model. Prefer SmolLM2 when responsiveness is the priority. For SmolLM2, run `core`, then `runtime`, then the expanded `sampling` profile, and finally `apply`; use `optimize smollm` to run this sequence with resume behavior. For Moondream2, require the colocated `moondream2-mmproj-050824-f16.gguf`, Lorna2’s image fixture, and local `llama-cli` support for both `--mmproj` and `--image`. Run its vision-aware `core`, `runtime`, and `sampling` profiles, but do not apply the result to ordinary Lorna text runners; those runners do not supply the image and projector. TinyDolphin 2.8 1.1B is currently recorded as corrupt and must be skipped until its GGUF is replaced.
 
 ## Recovery
 

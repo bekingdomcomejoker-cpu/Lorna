@@ -172,7 +172,7 @@ add_config() {
 }
 
 # The base configuration plus any requested one-variable-at-a-time candidates.
-add_config "baseline" 4 4 0 auto
+add_config "baseline" 4 4 default auto
 
 if [ -n "$THREADS_LIST" ]; then
     for value in $(printf '%s' "$THREADS_LIST" | tr ',' ' '); do
@@ -180,7 +180,7 @@ if [ -n "$THREADS_LIST" ]; then
             echo "Invalid thread count: $value" >&2
             exit 2
         fi
-        add_config "threads=$value" "$value" "$value" 0 auto
+        add_config "threads=$value" "$value" "$value" default auto
     done
 fi
 
@@ -190,7 +190,7 @@ if [ -n "$BATCH_THREADS_LIST" ]; then
             echo "Invalid batch-thread count: $value" >&2
             exit 2
         fi
-        add_config "batch_threads=$value" 4 "$value" 0 auto
+        add_config "batch_threads=$value" 4 "$value" default auto
     done
 fi
 
@@ -210,7 +210,7 @@ if [ -n "$IMAGE_TOKENS_LIST" ]; then
             echo "Invalid image-token limit: $value" >&2
             exit 2
         fi
-        add_config "image_tokens=$value" 4 4 0 "$value"
+        add_config "image_tokens=$value" 4 4 default "$value"
     done
 fi
 
@@ -221,7 +221,8 @@ label_for_key() {
 
 run_moondream() {
     label="$1"; threads="$2"; batch_threads="$3"; token_override="$4"; image_override="$5"; run_id="$6"
-    tokens="${token_override:-24}"
+    tokens="24"
+    [ "$token_override" != "default" ] && tokens="$token_override"
     image_tokens="64"
     [ "$image_override" != "auto" ] && image_tokens="$image_override"
     log="$OUT_DIR/moondream2-${run_id}.log"
@@ -246,7 +247,8 @@ run_moondream() {
 
 run_smolvlm() {
     label="$1"; threads="$2"; batch_threads="$3"; token_override="$4"; image_override="$5"; run_id="$6"
-    tokens="${token_override:-32}"
+    tokens="32"
+    [ "$token_override" != "default" ] && tokens="$token_override"
     log="$OUT_DIR/smolvlm-${run_id}.log"
     start="$(date +%s)"
 

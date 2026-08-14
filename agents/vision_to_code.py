@@ -43,14 +43,41 @@ style: colors, spacing, typography, borders, and alignment
 text: visible text, or [unreadable]
 END_VISUAL_SPEC"""
 
-CODE_PROMPT_TEMPLATE = """Create one complete standalone {target} document from the visual specification below.
-Use semantic, responsive markup and embed CSS in a single style block. Do not use external dependencies.
+CODE_PROMPT_TEMPLATE = """Create concise {target} source code from the visual specification below.
 Return only source code. Do not use Markdown fences, explanations, examples, or additional sections.
-For HTML, finish immediately after the closing </html> tag.
 
 VISUAL SPECIFICATION:
 {visual_spec}
 """
+
+HTML_FRAGMENT_PROMPT_TEMPLATE = """Create a compact responsive interface from the visual specification below.
+Return exactly one semantic <main>...</main> HTML fragment and nothing else.
+Do not include html, head, style, script, Markdown fences, examples, or explanations.
+Use at most 12 HTML elements. Prefer visible structure over invented detail.
+
+VISUAL SPECIFICATION:
+{visual_spec}
+"""
+
+HTML_SHELL_PREFIX = """<!doctype html>
+<html lang=\"en\">
+<head>
+  <meta charset=\"utf-8\">
+  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">
+  <style>
+    :root { color-scheme: light; font-family: system-ui, sans-serif; }
+    body { margin: 0; min-height: 100vh; background: #f4f6f8; color: #18212b; }
+    main { box-sizing: border-box; display: grid; place-items: center; min-height: 100vh; padding: 24px; }
+    section, article, form { box-sizing: border-box; width: min(100%, 440px); padding: 24px; background: #fff; border: 1px solid #dce2e8; border-radius: 16px; box-shadow: 0 10px 28px rgba(24, 33, 43, .08); }
+    h1, h2, p { margin-top: 0; }
+    button, input, textarea { box-sizing: border-box; width: 100%; min-height: 42px; margin-top: 10px; padding: 10px 12px; border: 1px solid #b9c4cf; border-radius: 8px; font: inherit; }
+    button { cursor: pointer; border: 0; background: #1463d8; color: #fff; font-weight: 650; }
+  </style>
+</head>
+<body>
+"""
+
+HTML_SHELL_SUFFIX = "\n</body>\n</html>\n"
 
 
 @dataclass(frozen=True)
@@ -176,7 +203,7 @@ def build_coder_command(
         "-f",
         str(prompt_file),
         "-n",
-        "384",
+        "224",
         "-c",
         "1024",
         "-t",
@@ -224,14 +251,23 @@ def _extract_generated_source(text: str, output_path: Path) -> str:
                 "  <style>\n" + css + "\n  </style>\n</head>\n<body>\n"
                 + html_fragment + "\n</body>\n</html>\n"
             )
+        if output_path.suffix.lower() in {".html", ".htm"} and re.fullmatch(r"(?is)<main\b[^>]*>.*</main>", html_fragment):
+            return HTML_SHELL_PREFIX + html_fragment + HTML_SHELL_SUFFIX
         return html_fragment + "\n"
 
     html_document = re.search(r"(?is)(<!doctype html.*?</html>|<html.*?</html>)", source)
     if html_document:
         return html_document.group(1).strip() + "\n"
 
+    main_fragment = re.search(r"(?is)(<main\b[^>]*>.*?</main>)", source)
+    if main_fragment:
+        return HTML_SHELL_PREFIX + main_fragment.group(1).strip() + HTML_SHELL_SUFFIX
+
     fenced_documents = re.findall(r"```(?:html|\w+)?\s*(.*?)\s*```", source, flags=re.DOTALL | re.IGNORECASE)
     for document in fenced_documents:
+        fragment = re.search(r"(?is)(<main\b[^>]*>.*?</main>)", document)
+        if fragment:
+            return HTML_SHELL_PREFIX + fragment.group(1).strip() + HTML_SHELL_SUFFIX
         if document.strip():
             return document.strip() + "\n"
     return ""
@@ -481,7 +517,10 @@ def run_pipeline(args: argparse.Namespace) -> str:
         )
     paths.visual_spec.write_text(visual_spec + "\n", encoding="utf-8")
 
-    coder_prompt = CODE_PROMPT_TEMPLATE.format(target=args.target, visual_spec=visual_spec)
+    if paths.output.suffix.lower() in {".html", ".htm"}:
+        coder_prompt = HTML_FRAGMENT_PROMPT_TEMPLATE.format(visual_spec=visual_spec)
+    else:
+        coder_prompt = CODE_PROMPT_TEMPLATE.format(target=args.target, visual_spec=visual_spec)
     paths.coder_prompt.write_text(coder_prompt, encoding="utf-8")
 
     print(f"SmolVLM completed in {_format_seconds(vision_seconds)}. Starting DeepSeek-Coder after releasing the vision process.", flush=True)

@@ -74,6 +74,15 @@ class VisionToCodeTests(unittest.TestCase):
             "",
         )
 
+    def test_main_fragment_is_wrapped_in_a_standalone_page(self):
+        raw = """<|im_start|>html
+<main><section><h1>Compact</h1><button>Continue</button></section></main>
+<|im_end|>"""
+        result = pipeline._extract_generated_source(raw, Path("/tmp/rebuilt.html"))
+        self.assertIn("<!doctype html>", result.lower())
+        self.assertIn("<main><section><h1>Compact</h1><button>Continue</button></section></main>", result)
+        self.assertIn("</html>", result)
+
     def test_complete_html_is_recovered_after_template_and_fences(self):
         raw = """SOLUTION:
 <|im_start|>assistant
@@ -129,7 +138,7 @@ The HTML and CSS code provided above is an example.
     def test_coder_command_uses_bounded_generation_budget(self):
         with patch.object(pipeline, "_help_contains", return_value=False):
             command = pipeline.build_coder_command("llama-cli", Path("/models/coder.gguf"), Path("/tmp/prompt.txt"), Path("/tmp/output.html"))
-        self.assertEqual(command[command.index("-n") + 1], "384")
+        self.assertEqual(command[command.index("-n") + 1], "224")
 
     def test_dry_run_builds_both_stages_without_launching(self):
         with tempfile.TemporaryDirectory() as temp_dir:

@@ -91,3 +91,70 @@ On Termux, the following test is read-only and does not launch a model:
 ```bash
 printf '/system\n/route auto "write a Python script"\n/pipeline --dry-run balanced "explain a benchmark result"\n/exit\n' | python3 agents/lorna_v2.py
 ```
+
+## Vision Benchmark Memory
+
+The second integration wave stores paired vision benchmark observations in the same durable Lorna2 benchmark memory file without changing the existing text-model `runs` or `recommendations` collections. The added `vision_runs` collection preserves one record per parsed summary row, while `vision_recommendations` contains the quickest **actual successful image-encoding** configuration for each supported pair.
+
+| Memory field | Purpose |
+|---|---|
+| `model_pair` | `moondream_2025` or `smolvlm`. |
+| `config` | Generation threads, batch threads, output-token cap, and image-token cap. |
+| `elapsed_s` and `exit_code` | Measured wall-clock result and process outcome from the saved summary row. |
+| `encoding_done` and `response_text` | Evidence from the corresponding log that image encoding completed plus the captured response text. |
+| `completed_successfully` | True only for an actual benchmark row with `exit=0` that finished before its configured timeout. |
+| `timestamp`, `source_summary`, and `source_log` | Provenance for later review without rerunning a vision model. |
+
+> **Profile rule:** A profile recommendation is created only from a non-dry-run record with `exit=0`, elapsed time below the configured timeout, and a log confirming that multimodal image encoding completed. Dry runs can be saved for audit purposes but never change a recommended profile.
+
+### Lorna2 Vision-Memory Commands
+
+```text
+/vision-results
+/vision-results smolvlm 5
+/vision-profile
+/vision-profile moondream_2025
+/vision-ingest ~/.lorna_v2/vision_bench/20260814-120000
+```
+
+`/vision-results` and `/vision-profile` only read durable JSON data. `/vision-ingest` parses an existing benchmark directory or `summary.txt`; it never launches a model. The benchmark module writes `benchmark_memory.json` atomically through a temporary sibling file before replacement.
+
+### Benchmark Persistence
+
+The sequential benchmark script now stores actual completed results automatically:
+
+```bash
+cd "$HOME/Lorna"
+./tools/benchmark_vision_models.sh --threads 2,4 --output-tokens 16,24
+```
+
+Use `--no-save-results` to retain the artifact directory without updating memory. A preview remains model-free and does not save by default:
+
+```bash
+./tools/benchmark_vision_models.sh --dry-run --threads 2,4
+```
+
+Use `--dry-run --save-results` only when an auditable preview row is useful; such a row is retained but cannot become a profile recommendation.
+
+### Safe Lorna Shell Entry Points
+
+```bash
+./lorna.sh vision-bench --dry-run --threads 2,4
+./lorna.sh route auto "summarize a local vision benchmark"
+./lorna.sh pipeline balanced "explain a stored benchmark result"
+```
+
+The `vision-bench` command is the explicit model-launching entry point and remains sequential, refusing to start while `ollama serve` is present. The `route` entry point is read-only. The shell `pipeline` entry point always adds `--dry-run`, so it only previews stages; deliberate live pipelines remain available only in Lorna2 through `/pipeline <profile> <request>`.
+
+### Second-Wave Validation
+
+```bash
+cd "$HOME/Lorna"
+python3 -m py_compile agents/vision_benchmark_memory.py agents/lorna_v2.py
+python3 agents/test_vision_benchmark_memory.py
+python3 agents/test_runtime_integration.py
+bash -n tools/benchmark_vision_models.sh lorna.sh
+printf '/vision-results\n/vision-profile\n/exit\n' | python3 agents/lorna_v2.py
+```
+
+The final command is read-only and does not load Moondream2, SmolVLM, Ollama, or llama.cpp.

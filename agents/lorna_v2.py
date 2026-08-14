@@ -16,12 +16,14 @@ try:
     from .vision_bridge import command as vision_bridge_command
     from .moondream_image import command as moondream_image_command
     from .runtime_integration import format_system_status, pipeline_command, route_command
+    from .vision_benchmark_memory import command as vision_benchmark_command
 except ImportError:
     from benchmark_manager import command as benchmark_command
     from vision_to_code import command as visual_code_command
     from vision_bridge import command as vision_bridge_command
     from moondream_image import command as moondream_image_command
     from runtime_integration import format_system_status, pipeline_command, route_command
+    from vision_benchmark_memory import command as vision_benchmark_command
 
 # ===== Configuration =====
 MODELS = {
@@ -138,6 +140,12 @@ def execute_tool(user_input):
         return route_command(arg)
     if cmd == "pipeline":
         return pipeline_command(arg)
+    if cmd in {"vision-results", "vision-result"}:
+        return vision_benchmark_command(f"results {arg}".strip())
+    if cmd in {"vision-profile", "vision-profiles"}:
+        return vision_benchmark_command(f"profile {arg}".strip())
+    if cmd == "vision-ingest":
+        return vision_benchmark_command(f"ingest {arg}".strip())
 
     # Integrated Drive skills
     if cmd == "skills":
@@ -312,7 +320,7 @@ def chat_with_node(user_input):
 def main():
     global CURRENT_NODE, CWD, ACTIVE_SKILL
     print("[Ω] LORNA v2.0 — Tri-Node + Agent")
-    print("    Commands: /quit, /node <fast|deep|code|agent>, /tools, /skills, /skill, /benchmark, /system, /route, /pipeline, /visual-code, /vision-bridge, /moondream-image, /clear")
+    print("    Commands: /quit, /node <fast|deep|code|agent>, /tools, /skills, /skill, /benchmark, /system, /route, /pipeline, /vision-results, /vision-profile, /vision-ingest, /visual-code, /vision-bridge, /moondream-image, /clear")
     print(f"    Current node: {CURRENT_NODE}")
     print(f"    Current directory: {CWD}")
 
@@ -338,7 +346,7 @@ def main():
                 print(f"Current node: {CURRENT_NODE}")
         elif user_input == "/tools":
             print("Available tool commands:")
-            print("  benchmark, system, route, pipeline, visual-code, vision-bridge, moondream-image, skills, skill, ls, cd, pwd, cat, write, cp, mv, rm --force, run, fetch, find, grep, df, free, ps, help")
+            print("  benchmark, system, route, pipeline, vision-results, vision-profile, vision-ingest, visual-code, vision-bridge, moondream-image, skills, skill, ls, cd, pwd, cat, write, cp, mv, rm --force, run, fetch, find, grep, df, free, ps, help")
             print("  Benchmark: /benchmark status | profiles | sweep <model> [core|runtime|sampling] | apply <model> | optimize <model|all> | active <model> | rollback <model> | memory")
             print("  Moondream image: /moondream-image <image> [question] (prepared image, direct Moondream2 projector path; no HTML)")
             print("  Vision bridge: /vision-bridge <image> [question] (SmolVLM then text-only Moondream2, sequentially; no HTML)")
@@ -346,6 +354,7 @@ def main():
             print("  System: /system (read-only RAM, storage, binary, model, and process status)")
             print("  Routing: /route list | /route <profile> | /route auto <request>")
             print("  Pipeline: /pipeline --dry-run <profile> <request> | /pipeline <profile> <request> (sequential local stages)")
+            print("  Vision memory: /vision-results [pair] [count] | /vision-profile [pair] | /vision-ingest <benchmark-directory>")
             print("  Skill IDs can be built-in names such as manus-api or library:<source>/<path>.")
             print("Type any of these to use them. Everything else goes to the model.")
         elif user_input == "/skills":
@@ -377,6 +386,14 @@ def main():
             print(route_command(user_input[len("/route"):].strip()))
         elif user_input.startswith("/pipeline"):
             print(pipeline_command(user_input[len("/pipeline"):].strip()))
+        elif user_input.startswith("/vision-results") or user_input.startswith("/vision-result"):
+            prefix = "/vision-results" if user_input.startswith("/vision-results") else "/vision-result"
+            print(vision_benchmark_command(f"results {user_input[len(prefix):].strip()}".strip()))
+        elif user_input.startswith("/vision-profile") or user_input.startswith("/vision-profiles"):
+            prefix = "/vision-profile" if user_input.startswith("/vision-profile") else "/vision-profiles"
+            print(vision_benchmark_command(f"profile {user_input[len(prefix):].strip()}".strip()))
+        elif user_input.startswith("/vision-ingest"):
+            print(vision_benchmark_command(f"ingest {user_input[len('/vision-ingest'):].strip()}".strip()))
         elif user_input.startswith("/visual-code") or user_input.startswith("/vision-code"):
             if user_input.startswith("/visual-code"):
                 argument = user_input[len("/visual-code"):].strip()

@@ -13,8 +13,8 @@ LORNA2_AGENT="$LORNA_DIR/agents/lorna_v2.py"
 
 if [[ -z "$LLAMA_BIN" || ! -x "$LLAMA_BIN" ]]; then
   case "${1:-menu}" in
-    agent2|agent|lorna2)
-      # Agent mode uses local Ollama rather than llama-cli.
+    agent2|agent|lorna2|vision-bench|vision-benchmark|route|pipeline)
+      # Lorna2 and the new non-llama-cli routes use their own local runtime checks.
       ;;
     *)
       echo ""
@@ -81,13 +81,16 @@ show_menu() {
   echo -e "  ${BOLD}13${NC}  top10        — Speed reference"
   echo -e "  ${BOLD}14${NC}  distill      — LLM Tokenizer & Distillation"
   echo -e "  ${BOLD}15${NC}  agent2       — Lorna2 Agent (chat + local tools)"
+  echo -e "  ${BOLD}16${NC}  vision-bench — Sequential Moondream2 + SmolVLM benchmark"
   echo ""
-  echo -e "  ${DIM}q/quit or /exit — exit  |  Direct: lab, tune quick, preset deepseek_r1_fast, agent2${NC}"
+  echo -e "  ${DIM}q/quit or /exit — exit  |  Direct: lab, tune quick, preset deepseek_r1_fast, agent2, route, pipeline, vision-bench${NC}"
   echo ""
 }
 
 route() {
-  local cmd="${1:-menu}" arg="${2:-}"
+  local cmd="${1:-menu}"
+  shift || true
+  local arg="$*"
 
   case "$cmd" in
     solo)
@@ -147,6 +150,20 @@ route() {
     agent2|agent|lorna2)
       run_lorna2_agent
       ;;
+    vision-bench|vision-benchmark)
+      bash "$LORNA_DIR/tools/benchmark_vision_models.sh" "$@"
+      ;;
+    route)
+      python3 "$LORNA_DIR/agents/runtime_integration.py" --route "$arg"
+      ;;
+    pipeline)
+      if [[ -z "$arg" ]]; then
+        echo "Usage: lorna pipeline <fast|balanced|code|verify|vision> <request>"
+        echo "This Lorna shell entry point is preview-only; use Lorna2 /pipeline for deliberate live execution."
+        return 2
+      fi
+      python3 "$LORNA_DIR/agents/runtime_integration.py" --pipeline "--dry-run $arg"
+      ;;
     help|--help|-h)
       lorna_banner
       cat << HELP
@@ -170,6 +187,9 @@ ${BOLD}Tools:${NC}
   lorna health            → full diagnostics
   lorna top10             → speed reference
   lorna agent2            → Lorna2 Agent (chat + local tools)
+  lorna vision-bench [opts] [image] [question] → sequential paired vision benchmark
+  lorna route <profile|auto request>             → inspect a read-only routing decision
+  lorna pipeline <profile> <request>             → preview a sequential pipeline; no model launch
 
 ${BOLD}Verified Configs (DSBench.pdf):${NC}
   DeepSeek R1:  5.0 t/s @ 4096ctx/32b/4t/0.3temp
@@ -183,7 +203,7 @@ HELP
     menu|"")
       while true; do
         show_menu
-        read -rp "  Select [1-15 or command]: " input
+        read -rp "  Select [1-16 or command]: " input
         echo ""
 
         local parsed_cmd parsed_arg
@@ -205,6 +225,7 @@ HELP
           13) route top10 ;;
           14) route distill ;;
           15) route agent2 ;;
+          16) route vision-bench ;;
           q|quit|exit|/quit|/exit|"")
             echo ""
             ok "Goodbye."

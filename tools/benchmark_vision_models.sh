@@ -17,7 +17,10 @@ FIXTURE="$HOME_DIR/Lorna/agents/benchmark_assets/lorna_moondream_fixture.png"
 IMAGE="$FIXTURE"
 QUESTION="Describe the image in one short sentence."
 DRY_RUN=0
+SAVE_RESULTS="auto"
 TIMEOUT_SECONDS="${VISION_BENCH_TIMEOUT_SECONDS:-180}"
+LORNA_DIR="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
+VISION_MEMORY_SCRIPT="$LORNA_DIR/agents/vision_benchmark_memory.py"
 THREADS_LIST=""
 BATCH_THREADS_LIST=""
 OUTPUT_TOKENS_LIST=""
@@ -39,6 +42,8 @@ baseline. Lists are comma-separated and are NOT combined into a grid.
 
 Options:
   --dry-run                  Print planned commands; do not load models.
+  --save-results             Persist parsed rows after completion (also permits dry-run records).
+  --no-save-results          Do not update Lorna2 durable benchmark memory.
   --threads LIST             Generation + default batch threads, e.g. 2,4.
   --batch-threads LIST       Prompt/batch thread counts, e.g. 2,4.
   --output-tokens LIST       Generation caps (-n), e.g. 16,24,32.
@@ -75,6 +80,14 @@ while [ "$#" -gt 0 ]; do
             ;;
         --dry-run)
             DRY_RUN=1
+            shift
+            ;;
+        --save-results)
+            SAVE_RESULTS=1
+            shift
+            ;;
+        --no-save-results)
+            SAVE_RESULTS=0
             shift
             ;;
         --threads)
@@ -286,6 +299,11 @@ run_smolvlm() {
     echo "question=$QUESTION"
     echo "timeout=${TIMEOUT_SECONDS}s per model"
     echo "mode=one-variable-at-a-time"
+    if [ "$DRY_RUN" -eq 1 ]; then
+        echo "mode=dry-run"
+    else
+        echo "mode=benchmark"
+    fi
     echo "output=$OUT_DIR"
     echo
 } | tee "$SUMMARY"
@@ -303,3 +321,27 @@ done < "$CONFIGS"
 
 printf '\nSummary saved to: %s\n' "$SUMMARY"
 printf 'Configuration matrix: %s\n' "$CONFIGS"
+
+# Actual benchmark rows update durable memory by default. A dry-run must opt in,
+# so command previews never become recommended vision profiles.
+should_save="$SAVE_RESULTS"
+if [ "$DRY_RUN" -eq 1 ] && [ "$SAVE_RESULTS" = "auto" ]; then
+    should_save=0
+fi
+if [ "$should_save" = "auto" ]; then
+    should_save=1
+fi
+if [ "$should_save" -eq 1 ]; then
+    if [ -r "$VISION_MEMORY_SCRIPT" ] && command -v python3 >/dev/null 2>&1; then
+        printf 'Persisting vision benchmark rows in Lorna2 durable memory...\n'
+        if python3 "$VISION_MEMORY_SCRIPT" ingest "$OUT_DIR"; then
+            printf 'Vision benchmark memory updated. View in Lorna2 with /vision-results.\n'
+        else
+            printf 'Vision benchmark completed, but durable-memory ingestion failed. Ingest later with: /vision-ingest %s\n' "$OUT_DIR" >&2
+        fi
+    else
+        printf 'Vision benchmark completed; durable-memory module unavailable. Ingest later with: /vision-ingest %s\n' "$OUT_DIR" >&2
+    fi
+else
+    printf 'Durable-memory save skipped. Ingest later with: /vision-ingest %s\n' "$OUT_DIR"
+fi

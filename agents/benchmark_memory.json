@@ -26,5 +26,7 @@
     }
   },
   "runs": [],
-  "recommendations": {}
+  "recommendations": {},
+  "vision_runs": [],
+  "vision_recommendations": {}
 }

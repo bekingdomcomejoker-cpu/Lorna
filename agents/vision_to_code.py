@@ -43,9 +43,10 @@ style: colors, spacing, typography, borders, and alignment
 text: visible text, or [unreadable]
 END_VISUAL_SPEC"""
 
-CODE_PROMPT_TEMPLATE = """Create a complete {target} implementation from the visual specification below.
-Use semantic, responsive markup and avoid external dependencies unless the specification requires them.
-Return only the complete source code; do not add an explanation or Markdown fences.
+CODE_PROMPT_TEMPLATE = """Create one complete standalone {target} document from the visual specification below.
+Use semantic, responsive markup and embed CSS in a single style block. Do not use external dependencies.
+Return only source code. Do not use Markdown fences, explanations, examples, or additional sections.
+For HTML, finish immediately after the closing </html> tag.
 
 VISUAL SPECIFICATION:
 {visual_spec}
@@ -175,7 +176,7 @@ def build_coder_command(
         "-f",
         str(prompt_file),
         "-n",
-        "768",
+        "384",
         "-c",
         "1024",
         "-t",
@@ -225,13 +226,14 @@ def _extract_generated_source(text: str, output_path: Path) -> str:
             )
         return html_fragment + "\n"
 
-    fenced = re.search(r"```(?:html|\w+)?\s*(.*?)\s*```", source, flags=re.DOTALL | re.IGNORECASE)
-    if fenced:
-        return fenced.group(1).strip() + "\n"
-
     html_document = re.search(r"(?is)(<!doctype html.*?</html>|<html.*?</html>)", source)
     if html_document:
         return html_document.group(1).strip() + "\n"
+
+    fenced_documents = re.findall(r"```(?:html|\w+)?\s*(.*?)\s*```", source, flags=re.DOTALL | re.IGNORECASE)
+    for document in fenced_documents:
+        if document.strip():
+            return document.strip() + "\n"
     return ""
 
 
@@ -485,16 +487,20 @@ def run_pipeline(args: argparse.Namespace) -> str:
     print(f"SmolVLM completed in {_format_seconds(vision_seconds)}. Starting DeepSeek-Coder after releasing the vision process.", flush=True)
     coder_started = monotonic()
     coder_status, coder_stdout, coder_output = _run_stage(
-        coder_command, args.coder_timeout, paths.coder_log, "DeepSeek-Coder stage"
+        coder_command,
+        args.coder_timeout,
+        paths.coder_log,
+        "DeepSeek-Coder stage",
+        live_output=True,
     )
     coder_seconds = monotonic() - coder_started
-    if coder_status != 0:
+    generated_source = _extract_generated_source(coder_stdout or coder_output, paths.output)
+    if coder_status != 0 and not generated_source:
         return (
             f"DeepSeek-Coder stage failed with exit code {coder_status} after {_format_seconds(coder_seconds)}. "
             f"Visual spec remains at: {paths.visual_spec}\n"
             f"Coder log: {paths.coder_log}\n\n{_tail(coder_output)}"
         )
-    generated_source = _extract_generated_source(coder_stdout or coder_output, paths.output)
     if not generated_source:
         return (
             "DeepSeek-Coder completed but did not emit extractable source code. "
@@ -504,8 +510,13 @@ def run_pipeline(args: argparse.Namespace) -> str:
 
     paths.output.parent.mkdir(parents=True, exist_ok=True)
     paths.output.write_text(generated_source, encoding="utf-8")
+    completion_note = "Visual-to-code pipeline completed sequentially."
+    if coder_status != 0:
+        completion_note = (
+            f"DeepSeek-Coder was stopped after {_format_seconds(coder_seconds)}, but a complete source document was salvaged."
+        )
     return (
-        "Visual-to-code pipeline completed sequentially.\n"
+        completion_note + "\n"
         f"Prepared image: {prepared_image.path} ({prepared_image.summary})\n"
         f"Visual specification: {paths.visual_spec}\n"
         f"Generated {args.target}: {paths.output}\n"

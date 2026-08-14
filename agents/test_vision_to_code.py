@@ -74,6 +74,19 @@ class VisionToCodeTests(unittest.TestCase):
             "",
         )
 
+    def test_complete_html_is_recovered_after_template_and_fences(self):
+        raw = """SOLUTION:
+<|im_start|>assistant
+<|im_end|>
+```html
+<html><body><main>Recovered</main></body></html>
+```
+```
+```
+"""
+        result = pipeline._extract_generated_source(raw, Path("/tmp/rebuilt.html"))
+        self.assertEqual(result, "<html><body><main>Recovered</main></body></html>\n")
+
     def test_deepseek_template_output_becomes_self_contained_html(self):
         raw = """SOLUTION:
 <|im_start|>html
@@ -112,6 +125,11 @@ The HTML and CSS code provided above is an example.
             self.assertEqual(stdout, "")
             self.assertIn("cancelled", combined)
             self.assertIn("cancelled", log_path.read_text(encoding="utf-8"))
+
+    def test_coder_command_uses_bounded_generation_budget(self):
+        with patch.object(pipeline, "_help_contains", return_value=False):
+            command = pipeline.build_coder_command("llama-cli", Path("/models/coder.gguf"), Path("/tmp/prompt.txt"), Path("/tmp/output.html"))
+        self.assertEqual(command[command.index("-n") + 1], "384")
 
     def test_dry_run_builds_both_stages_without_launching(self):
         with tempfile.TemporaryDirectory() as temp_dir:

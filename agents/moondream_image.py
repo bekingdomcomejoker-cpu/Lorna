@@ -55,7 +55,7 @@ def build_command(
     image_max_tokens: int = 64,
 ) -> list[str]:
     """Build the direct, bounded Moondream2 image command."""
-    return [
+    command = [
         mtmd_cli,
         "-m",
         str(model),
@@ -65,9 +65,12 @@ def build_command(
         str(image),
         "-p",
         question,
-        "--no-jinja",
-        "--chat-template",
-        "vicuna",
+    ]
+    # The verified 2025 pair carries its own chat metadata. The older 050824
+    # conversion does not, so preserve the explicit legacy llama.cpp fallback.
+    if "050824" in model.name.lower():
+        command.extend(["--no-jinja", "--chat-template", "vicuna"])
+    command.extend([
         "-n",
         "64",
         "-c",
@@ -88,7 +91,8 @@ def build_command(
         "--temp",
         "0.1",
         "--perf",
-    ]
+    ])
+    return command
 
 
 def _clean_response(text: str) -> str:

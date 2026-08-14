@@ -135,10 +135,13 @@ The HTML and CSS code provided above is an example.
             self.assertIn("cancelled", combined)
             self.assertIn("cancelled", log_path.read_text(encoding="utf-8"))
 
-    def test_coder_command_uses_bounded_generation_budget(self):
-        with patch.object(pipeline, "_help_contains", return_value=False):
+    def test_coder_command_uses_bounded_raw_prompting(self):
+        with patch.object(pipeline, "_help_contains", side_effect=lambda _binary, option: option in {"--no-conversation", "--no-jinja"}):
             command = pipeline.build_coder_command("llama-cli", Path("/models/coder.gguf"), Path("/tmp/prompt.txt"), Path("/tmp/output.html"))
         self.assertEqual(command[command.index("-n") + 1], "224")
+        self.assertIn("--no-conversation", command)
+        self.assertIn("--no-jinja", command)
+        self.assertNotIn("--single-turn", command)
 
     def test_dry_run_builds_both_stages_without_launching(self):
         with tempfile.TemporaryDirectory() as temp_dir:

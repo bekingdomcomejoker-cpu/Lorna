@@ -50,13 +50,16 @@ VISUAL SPECIFICATION:
 {visual_spec}
 """
 
-HTML_FRAGMENT_PROMPT_TEMPLATE = """Create a compact responsive interface from the visual specification below.
+HTML_FRAGMENT_PROMPT_TEMPLATE = """### Task
+Create a compact responsive interface from the visual specification below.
 Return exactly one semantic <main>...</main> HTML fragment and nothing else.
 Do not include html, head, style, script, Markdown fences, examples, or explanations.
 Use at most 12 HTML elements. Prefer visible structure over invented detail.
 
-VISUAL SPECIFICATION:
+### Visual specification
 {visual_spec}
+
+### Response
 """
 
 HTML_SHELL_PREFIX = """<!doctype html>
@@ -213,8 +216,10 @@ def build_coder_command(
         "--temp",
         "0.2",
     ]
-    if _help_contains(llama_cli, "--single-turn"):
-        command.append("--single-turn")
+    if _help_contains(llama_cli, "--no-conversation"):
+        command.append("--no-conversation")
+    if _help_contains(llama_cli, "--no-jinja"):
+        command.append("--no-jinja")
     if _help_contains(llama_cli, "--no-display-prompt"):
         command.append("--no-display-prompt")
     if _help_contains(llama_cli, "--no-perf"):

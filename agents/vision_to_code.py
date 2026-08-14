@@ -43,23 +43,13 @@ style: colors, spacing, typography, borders, and alignment
 text: visible text, or [unreadable]
 END_VISUAL_SPEC"""
 
-CODE_PROMPT_TEMPLATE = """Create concise {target} source code from the visual specification below.
+CODE_PROMPT_TEMPLATE = """Create one complete standalone {target} document from the visual specification below.
+Use semantic, responsive markup and embed CSS in a single style block. Do not use external dependencies.
 Return only source code. Do not use Markdown fences, explanations, examples, or additional sections.
+Finish immediately after the closing document tag.
 
 VISUAL SPECIFICATION:
 {visual_spec}
-"""
-
-HTML_FRAGMENT_PROMPT_TEMPLATE = """### Task
-Create a compact responsive interface from the visual specification below.
-Return exactly one semantic <main>...</main> HTML fragment and nothing else.
-Do not include html, head, style, script, Markdown fences, examples, or explanations.
-Use at most 12 HTML elements. Prefer visible structure over invented detail.
-
-### Visual specification
-{visual_spec}
-
-### Response
 """
 
 HTML_SHELL_PREFIX = """<!doctype html>
@@ -206,7 +196,7 @@ def build_coder_command(
         "-f",
         str(prompt_file),
         "-n",
-        "224",
+        "512",
         "-c",
         "1024",
         "-t",
@@ -216,10 +206,8 @@ def build_coder_command(
         "--temp",
         "0.2",
     ]
-    if _help_contains(llama_cli, "--no-conversation"):
-        command.append("--no-conversation")
-    if _help_contains(llama_cli, "--no-jinja"):
-        command.append("--no-jinja")
+    if _help_contains(llama_cli, "--single-turn"):
+        command.append("--single-turn")
     if _help_contains(llama_cli, "--no-display-prompt"):
         command.append("--no-display-prompt")
     if _help_contains(llama_cli, "--no-perf"):
@@ -279,11 +267,17 @@ def _extract_generated_source(text: str, output_path: Path) -> str:
 
 
 def _run_stage(
-    command: list[str], timeout: int, log_path: Path, label: str, live_output: bool = False
+    command: list[str],
+    timeout: int,
+    log_path: Path,
+    label: str,
+    live_output: bool = False,
+    stop_after: str | None = None,
 ) -> tuple[int, str, str]:
     """Run one model stage, optionally mirroring progress while retaining a complete log."""
     if live_output:
         output_parts: list[str] = []
+        completion_seen = threading.Event()
         log_path.parent.mkdir(parents=True, exist_ok=True)
         try:
             process = subprocess.Popen(
@@ -306,6 +300,9 @@ def _run_stage(
                     log_file.write(line)
                     log_file.flush()
                     print(line, end="", flush=True)
+                    if stop_after and stop_after.lower() in line.lower() and not completion_seen.is_set():
+                        completion_seen.set()
+                        process.terminate()
 
         reader = threading.Thread(target=mirror_output, daemon=True)
         reader.start()
@@ -340,6 +337,8 @@ def _run_stage(
                 process.stdout.close()
             reader.join(timeout=2)
 
+        if completion_seen.is_set():
+            return_code = 0
         combined = "".join(output_parts)
         return return_code, combined, combined
 
@@ -522,10 +521,7 @@ def run_pipeline(args: argparse.Namespace) -> str:
         )
     paths.visual_spec.write_text(visual_spec + "\n", encoding="utf-8")
 
-    if paths.output.suffix.lower() in {".html", ".htm"}:
-        coder_prompt = HTML_FRAGMENT_PROMPT_TEMPLATE.format(visual_spec=visual_spec)
-    else:
-        coder_prompt = CODE_PROMPT_TEMPLATE.format(target=args.target, visual_spec=visual_spec)
+    coder_prompt = CODE_PROMPT_TEMPLATE.format(target=args.target, visual_spec=visual_spec)
     paths.coder_prompt.write_text(coder_prompt, encoding="utf-8")
 
     print(f"SmolVLM completed in {_format_seconds(vision_seconds)}. Starting DeepSeek-Coder after releasing the vision process.", flush=True)
@@ -536,6 +532,7 @@ def run_pipeline(args: argparse.Namespace) -> str:
         paths.coder_log,
         "DeepSeek-Coder stage",
         live_output=True,
+        stop_after="</html>" if paths.output.suffix.lower() in {".html", ".htm"} else None,
     )
     coder_seconds = monotonic() - coder_started
     generated_source = _extract_generated_source(coder_stdout or coder_output, paths.output)

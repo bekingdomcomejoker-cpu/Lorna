@@ -22,7 +22,8 @@ class MoondreamImageTests(unittest.TestCase):
         )
         self.assertIn("--image", command)
         self.assertIn("--mmproj", command)
-        self.assertNotIn("--chat-template", command)
+        self.assertEqual(command[command.index("--chat-template") + 1], "alpaca")
+        self.assertIn("--jinja", command)
         self.assertNotIn("--no-jinja", command)
         self.assertEqual(command[command.index("--image-max-tokens") + 1], "64")
         self.assertEqual(command[command.index("-c") + 1], "2048")
@@ -50,7 +51,7 @@ class MoondreamImageTests(unittest.TestCase):
             ):
                 response = moon.run(args)
             self.assertIn("Dry run", response)
-            self.assertIn("--mmproj", response)
+            self.assertIn("--chat-template alpaca", response)
 
 
 if __name__ == "__main__":

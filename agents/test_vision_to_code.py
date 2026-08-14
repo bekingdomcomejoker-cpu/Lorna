@@ -30,8 +30,30 @@ class VisionToCodeTests(unittest.TestCase):
         self.assertEqual(command[command.index("--chat-template") + 1], "smolvlm")
         self.assertIn("--image-max-tokens", command)
         self.assertEqual(command[command.index("--image-max-tokens") + 1], "128")
-        self.assertIn("--no-mmproj-offload", command)
+        self.assertNotIn("--no-mmproj-offload", command)
+        self.assertNotIn("--mmproj-offload", command)
         self.assertIn("--cache-type-k", command)
+        forced_off = pipeline.build_vision_command(
+            "llama-mtmd-cli", Path("/models/smolvlm.gguf"), Path("/models/mmproj.gguf"), Path("/images/source.png"), projector_offload="off"
+        )
+        self.assertIn("--no-mmproj-offload", forced_off)
+        forced_on = pipeline.build_vision_command(
+            "llama-mtmd-cli", Path("/models/smolvlm.gguf"), Path("/models/mmproj.gguf"), Path("/images/source.png"), projector_offload="on"
+        )
+        self.assertIn("--mmproj-offload", forced_on)
+
+    def test_adaptive_image_preparation_resizes_large_input(self):
+        if pipeline.Image is None:
+            self.skipTest("Pillow is unavailable")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            source = root / "source.png"
+            pipeline.Image.new("RGB", (2000, 1000), color=(20, 40, 60)).save(source)
+            prepared = pipeline._prepare_image(source, root / "work", 1280, 80, True)
+            self.assertEqual(prepared.path.suffix.lower(), ".jpg")
+            with pipeline.Image.open(prepared.path) as image:
+                self.assertEqual(image.size, (1280, 640))
+            self.assertIn("resized", prepared.summary)
 
     def test_visual_spec_extraction_ignores_runtime_logs(self):
         raw = (

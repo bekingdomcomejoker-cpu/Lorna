@@ -14,9 +14,15 @@ import shutil
 import subprocess
 import sys
 import threading
+from time import monotonic
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
+
+try:
+    from PIL import Image
+except ImportError:  # Pillow is optional on Termux; the pipeline falls back safely.
+    Image = None
 
 
 HOME = Path.home()
@@ -44,6 +50,12 @@ Return only the complete source code; do not add an explanation or Markdown fenc
 VISUAL SPECIFICATION:
 {visual_spec}
 """
+
+
+@dataclass(frozen=True)
+class ImagePreparation:
+    path: Path
+    summary: str
 
 
 @dataclass(frozen=True)
@@ -102,6 +114,7 @@ def build_vision_command(
     batch: int = 8,
     ubatch: int = 8,
     image_max_tokens: int = 128,
+    projector_offload: str = "auto",
 ) -> list[str]:
     """Build the standalone SmolVLM stage without launching it."""
     command = [
@@ -122,7 +135,7 @@ def build_vision_command(
         "--chat-template",
         "smolvlm",
         "-n",
-        "256",
+        "128",
         "-c",
         str(context),
         "-t",
@@ -135,13 +148,16 @@ def build_vision_command(
         "q4_0",
         "--cache-type-v",
         "q4_0",
-        "--no-mmproj-offload",
         "--temp",
         "0.1",
         "--image-max-tokens",
         str(image_max_tokens),
         "--perf",
     ]
+    if projector_offload == "on":
+        command.append("--mmproj-offload")
+    elif projector_offload == "off":
+        command.append("--no-mmproj-offload")
     return command
 
 
@@ -318,6 +334,51 @@ def _run_stage(
     return result.returncode, stdout, combined
 
 
+def _prepare_image(
+    source: Path,
+    work_dir: Path,
+    max_long_edge: int,
+    jpeg_quality: int,
+    enabled: bool,
+) -> ImagePreparation:
+    """Create a deterministic smaller JPEG for vision inference when useful."""
+    if not enabled:
+        return ImagePreparation(source, "preprocessing disabled; original image used")
+    if Image is None:
+        return ImagePreparation(source, "Pillow unavailable; original image used")
+    try:
+        work_dir.mkdir(parents=True, exist_ok=True)
+        with Image.open(source) as opened:
+            original_width, original_height = opened.size
+            longest = max(original_width, original_height)
+            scale = min(1.0, max_long_edge / longest) if longest else 1.0
+            target_width = max(1, round(original_width * scale))
+            target_height = max(1, round(original_height * scale))
+            image = opened.convert("RGB")
+            if (target_width, target_height) != image.size:
+                resampling = getattr(Image, "Resampling", Image).LANCZOS
+                image = image.resize((target_width, target_height), resampling)
+            prepared = work_dir / "prepared_visual_input.jpg"
+            image.save(prepared, "JPEG", quality=jpeg_quality, optimize=True)
+    except (OSError, ValueError) as exc:
+        return ImagePreparation(source, f"preprocessing skipped ({exc}); original image used")
+
+    original_bytes = source.stat().st_size
+    prepared_bytes = prepared.stat().st_size
+    action = "resized" if scale < 1.0 else "re-encoded"
+    return ImagePreparation(
+        prepared,
+        (
+            f"{action} {original_width}x{original_height} to {target_width}x{target_height}; "
+            f"{original_bytes // 1024} KiB to {prepared_bytes // 1024} KiB JPEG"
+        ),
+    )
+
+
+def _format_seconds(seconds: float) -> str:
+    return f"{seconds:.1f}s"
+
+
 def _paths(work_dir: Path, output: Path | None) -> PipelinePaths:
     work_dir.mkdir(parents=True, exist_ok=True)
     final_output = output if output is not None else work_dir / "generated_page.html"
@@ -361,15 +422,26 @@ def run_pipeline(args: argparse.Namespace) -> str:
             "higher memory pressure."
         )
 
+    preparation_started = monotonic()
+    prepared_image = _prepare_image(
+        image,
+        paths.work_dir,
+        args.max_image_edge,
+        args.jpeg_quality,
+        not args.no_preprocess,
+    )
+    preparation_seconds = monotonic() - preparation_started
+
     vision_command = build_vision_command(
         mtmd_cli,
         vision_model,
         mmproj,
-        image,
+        prepared_image.path,
         context=args.context,
         batch=args.batch,
         ubatch=args.ubatch,
         image_max_tokens=args.image_max_tokens,
+        projector_offload=args.projector_offload,
     )
     coder_command = build_coder_command(llama_cli, coder_model, paths.coder_prompt, paths.output)
 
@@ -381,7 +453,10 @@ def run_pipeline(args: argparse.Namespace) -> str:
             f"Work directory: {paths.work_dir}"
         )
 
+    print(f"Image preparation: {prepared_image.summary} ({_format_seconds(preparation_seconds)})", flush=True)
+    print(f"Projector offload preference: {args.projector_offload}", flush=True)
     print("Starting SmolVLM visual stage. Live image-encoding progress will appear below; do not interrupt it while batches advance.", flush=True)
+    vision_started = monotonic()
     visual_status, _visual_stdout, visual_output = _run_stage(
         vision_command,
         args.vision_timeout,
@@ -389,9 +464,10 @@ def run_pipeline(args: argparse.Namespace) -> str:
         "SmolVLM vision stage",
         live_output=True,
     )
+    vision_seconds = monotonic() - vision_started
     if visual_status != 0:
         return (
-            f"SmolVLM stage failed with exit code {visual_status}. "
+            f"SmolVLM stage failed with exit code {visual_status} after {_format_seconds(vision_seconds)}. "
             f"Log: {paths.visual_log}\n\n{_tail(visual_output)}"
         )
 
@@ -406,13 +482,15 @@ def run_pipeline(args: argparse.Namespace) -> str:
     coder_prompt = CODE_PROMPT_TEMPLATE.format(target=args.target, visual_spec=visual_spec)
     paths.coder_prompt.write_text(coder_prompt, encoding="utf-8")
 
-    print("SmolVLM completed. Starting DeepSeek-Coder after releasing the vision process.", flush=True)
+    print(f"SmolVLM completed in {_format_seconds(vision_seconds)}. Starting DeepSeek-Coder after releasing the vision process.", flush=True)
+    coder_started = monotonic()
     coder_status, coder_stdout, coder_output = _run_stage(
         coder_command, args.coder_timeout, paths.coder_log, "DeepSeek-Coder stage"
     )
+    coder_seconds = monotonic() - coder_started
     if coder_status != 0:
         return (
-            f"DeepSeek-Coder stage failed with exit code {coder_status}. "
+            f"DeepSeek-Coder stage failed with exit code {coder_status} after {_format_seconds(coder_seconds)}. "
             f"Visual spec remains at: {paths.visual_spec}\n"
             f"Coder log: {paths.coder_log}\n\n{_tail(coder_output)}"
         )
@@ -428,8 +506,10 @@ def run_pipeline(args: argparse.Namespace) -> str:
     paths.output.write_text(generated_source, encoding="utf-8")
     return (
         "Visual-to-code pipeline completed sequentially.\n"
+        f"Prepared image: {prepared_image.path} ({prepared_image.summary})\n"
         f"Visual specification: {paths.visual_spec}\n"
         f"Generated {args.target}: {paths.output}\n"
+        f"Timing: preparation={_format_seconds(preparation_seconds)}, vision={_format_seconds(vision_seconds)}, coder={_format_seconds(coder_seconds)}\n"
         f"Stage logs: {paths.visual_log} and {paths.coder_log}"
     )
 
@@ -449,6 +529,10 @@ def make_parser() -> argparse.ArgumentParser:
     parser.add_argument("--batch", type=int, default=8)
     parser.add_argument("--ubatch", type=int, default=8)
     parser.add_argument("--image-max-tokens", type=int, default=128)
+    parser.add_argument("--max-image-edge", type=int, default=1280, help="Resize the longest image edge before vision inference")
+    parser.add_argument("--jpeg-quality", type=int, default=80, help="JPEG quality for the prepared vision image")
+    parser.add_argument("--no-preprocess", action="store_true", help="Use the original image without resize or JPEG compression")
+    parser.add_argument("--projector-offload", choices=("auto", "on", "off"), default="auto", help="Multimodal projector offload preference; auto leaves the local CLI default unchanged")
     parser.add_argument("--vision-timeout", type=int, default=240)
     parser.add_argument("--coder-timeout", type=int, default=300)
     parser.add_argument("--allow-ollama", action="store_true", help="Allow the pipeline to run while ollama serve is active")

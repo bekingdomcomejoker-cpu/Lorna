@@ -68,7 +68,11 @@ python3 agents/vision_to_code.py \
   --target 'responsive HTML and CSS'
 ```
 
-The visual stage uses a 2,048-token context, small batch and micro-batch sizes, a 128-token image cap, CPU projector execution, and a single image. It streams `encoding mtmd batch` progress into both Termux and `smolvlm_run.log`; this encoding can take several minutes on the phone, so let advancing batch counts complete. A Ctrl+C now terminates only the active vision subprocess cleanly and prevents the code stage from starting.
+Before vision inference, the pipeline creates `prepared_visual_input.jpg` under its work directory. It preserves aspect ratio, limits the longest edge to **1,280 px**, and uses JPEG quality **80**. The final status reports preparation, vision, and code-generation duration separately. To compare the original image path, add `--no-preprocess`.
+
+The projector setting is capability-aware: `--projector-offload auto` is the default and leaves the local llama.cpp decision unchanged. Use `--projector-offload on` or `--projector-offload off` only when testing a known working device setting. The two LLM stages remain sequential regardless of projector preference.
+
+The visual stage uses a 2,048-token context, small batch and micro-batch sizes, a 128-token image cap, the local CLI’s automatic projector preference, and a single image. It streams `encoding mtmd batch` progress into both Termux and `smolvlm_run.log`; this encoding can take several minutes on the phone, so let advancing batch counts complete. A Ctrl+C now terminates only the active vision subprocess cleanly and prevents the code stage from starting.
 
 The SmolVLM command uses a system prompt plus `agents/visual_spec.gbnf`, a local constrained grammar. It requires exactly this four-field envelope before DeepSeek-Coder may start:
 

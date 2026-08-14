@@ -85,6 +85,24 @@ _LORNA_HAS_TOP_K=0
 _LORNA_HAS_TOP_P=0
 _LORNA_HAS_MIN_P=0
 _LORNA_HAS_REPEAT_PENALTY=0
+_LORNA_HAS_REPEAT_LAST_N=0
+_LORNA_HAS_FREQUENCY_PENALTY=0
+_LORNA_HAS_PRESENCE_PENALTY=0
+_LORNA_HAS_TYPICAL=0
+_LORNA_TYPICAL_FLAG=""
+_LORNA_HAS_TFS=0
+_LORNA_TFS_FLAG=""
+_LORNA_HAS_DRY_MULTIPLIER=0
+_LORNA_HAS_DRY_BASE=0
+_LORNA_HAS_DRY_ALLOWED_LENGTH=0
+_LORNA_HAS_DRY_PENALTY_LAST_N=0
+_LORNA_HAS_DYNATEMP_RANGE=0
+_LORNA_HAS_DYNATEMP_EXP=0
+_LORNA_HAS_MIROSTAT=0
+_LORNA_HAS_MIROSTAT_TAU=0
+_LORNA_MIROSTAT_TAU_FLAG=""
+_LORNA_HAS_MIROSTAT_ETA=0
+_LORNA_MIROSTAT_ETA_FLAG=""
 _LORNA_HAS_FLASH_ATTN=0
 
 probe_binary_flags() {
@@ -100,6 +118,36 @@ probe_binary_flags() {
   echo "$help_text" | grep -q "top-p"          && _LORNA_HAS_TOP_P=1
   echo "$help_text" | grep -q "min-p"          && _LORNA_HAS_MIN_P=1
   echo "$help_text" | grep -q "repeat-penalty" && _LORNA_HAS_REPEAT_PENALTY=1
+  echo "$help_text" | grep -q "repeat-last-n"  && _LORNA_HAS_REPEAT_LAST_N=1
+  echo "$help_text" | grep -q "frequency-penalty" && _LORNA_HAS_FREQUENCY_PENALTY=1
+  echo "$help_text" | grep -q "presence-penalty" && _LORNA_HAS_PRESENCE_PENALTY=1
+  if echo "$help_text" | grep -q -- "--typical-p"; then
+    _LORNA_HAS_TYPICAL=1; _LORNA_TYPICAL_FLAG="--typical-p"
+  elif echo "$help_text" | grep -q -- "--typical"; then
+    _LORNA_HAS_TYPICAL=1; _LORNA_TYPICAL_FLAG="--typical"
+  fi
+  if echo "$help_text" | grep -q -- "--tfs-z"; then
+    _LORNA_HAS_TFS=1; _LORNA_TFS_FLAG="--tfs-z"
+  elif echo "$help_text" | grep -q -- "--tfs"; then
+    _LORNA_HAS_TFS=1; _LORNA_TFS_FLAG="--tfs"
+  fi
+  echo "$help_text" | grep -q "dry-multiplier" && _LORNA_HAS_DRY_MULTIPLIER=1
+  echo "$help_text" | grep -q "dry-base" && _LORNA_HAS_DRY_BASE=1
+  echo "$help_text" | grep -q "dry-allowed-length" && _LORNA_HAS_DRY_ALLOWED_LENGTH=1
+  echo "$help_text" | grep -q "dry-penalty-last-n" && _LORNA_HAS_DRY_PENALTY_LAST_N=1
+  echo "$help_text" | grep -q "dynatemp-range" && _LORNA_HAS_DYNATEMP_RANGE=1
+  echo "$help_text" | grep -q "dynatemp-exp" && _LORNA_HAS_DYNATEMP_EXP=1
+  echo "$help_text" | grep -q "mirostat" && _LORNA_HAS_MIROSTAT=1
+  if echo "$help_text" | grep -q -- "--mirostat-ent"; then
+    _LORNA_HAS_MIROSTAT_TAU=1; _LORNA_MIROSTAT_TAU_FLAG="--mirostat-ent"
+  elif echo "$help_text" | grep -q -- "--mirostat-tau"; then
+    _LORNA_HAS_MIROSTAT_TAU=1; _LORNA_MIROSTAT_TAU_FLAG="--mirostat-tau"
+  fi
+  if echo "$help_text" | grep -q -- "--mirostat-lr"; then
+    _LORNA_HAS_MIROSTAT_ETA=1; _LORNA_MIROSTAT_ETA_FLAG="--mirostat-lr"
+  elif echo "$help_text" | grep -q -- "--mirostat-eta"; then
+    _LORNA_HAS_MIROSTAT_ETA=1; _LORNA_MIROSTAT_ETA_FLAG="--mirostat-eta"
+  fi
   echo "$help_text" | grep -q "flash-attn"     && _LORNA_HAS_FLASH_ATTN=1
   _LORNA_FLAGS_TESTED=1
 }
@@ -136,7 +184,7 @@ get_model_runtime_config() {
   if [[ "$preset_line" =~ ^[0-9]+[[:space:]][0-9]+[[:space:]][0-9]+[[:space:]][0-9.]+ ]]; then
     echo "$preset_line"
   else
-    echo "$ctx $batch $threads $temp $threads $batch q4_0 q4_0 auto 40 0.95 0.05 1.05"
+    echo "$ctx $batch $threads $temp $threads $batch q4_0 q4_0 auto 40 0.95 0.05 1.05 64 0.0 0.0 1.0 1.0 0.0 1.75 2 64 0.0 1.0 0 5.0 0.1"
   fi
 }
 
@@ -156,8 +204,8 @@ run_model() {
   local n_tokens="${4:-128}"
   local temp_override="$5"
 
-  local ctx batch threads temp_default threads_batch ubatch cache_k cache_v flash_attn top_k top_p min_p repeat_penalty
-  read -r ctx batch threads temp_default threads_batch ubatch cache_k cache_v flash_attn top_k top_p min_p repeat_penalty <<< "$(get_model_runtime_config "$model")"
+  local ctx batch threads temp_default threads_batch ubatch cache_k cache_v flash_attn top_k top_p min_p repeat_penalty repeat_last_n frequency_penalty presence_penalty typical_p tfs_z dry_multiplier dry_base dry_allowed_length dry_penalty_last_n dynatemp_range dynatemp_exp mirostat mirostat_tau mirostat_eta
+  read -r ctx batch threads temp_default threads_batch ubatch cache_k cache_v flash_attn top_k top_p min_p repeat_penalty repeat_last_n frequency_penalty presence_penalty typical_p tfs_z dry_multiplier dry_base dry_allowed_length dry_penalty_last_n dynatemp_range dynatemp_exp mirostat mirostat_tau mirostat_eta <<< "$(get_model_runtime_config "$model")"
   local temp="${temp_override:-$temp_default}"
 
   probe_binary_flags
@@ -171,6 +219,20 @@ run_model() {
   [[ "$_LORNA_HAS_TOP_P"          -eq 1 ]] && extra_flags+=(--top-p "$top_p")
   [[ "$_LORNA_HAS_MIN_P"          -eq 1 ]] && extra_flags+=(--min-p "$min_p")
   [[ "$_LORNA_HAS_REPEAT_PENALTY" -eq 1 ]] && extra_flags+=(--repeat-penalty "$repeat_penalty")
+  [[ "$_LORNA_HAS_REPEAT_LAST_N" -eq 1 ]] && extra_flags+=(--repeat-last-n "$repeat_last_n")
+  [[ "$_LORNA_HAS_FREQUENCY_PENALTY" -eq 1 ]] && extra_flags+=(--frequency-penalty "$frequency_penalty")
+  [[ "$_LORNA_HAS_PRESENCE_PENALTY" -eq 1 ]] && extra_flags+=(--presence-penalty "$presence_penalty")
+  [[ "$_LORNA_HAS_TYPICAL" -eq 1 ]] && extra_flags+=("$_LORNA_TYPICAL_FLAG" "$typical_p")
+  [[ "$_LORNA_HAS_TFS" -eq 1 ]] && extra_flags+=("$_LORNA_TFS_FLAG" "$tfs_z")
+  [[ "$_LORNA_HAS_DRY_MULTIPLIER" -eq 1 ]] && extra_flags+=(--dry-multiplier "$dry_multiplier")
+  [[ "$_LORNA_HAS_DRY_BASE" -eq 1 ]] && extra_flags+=(--dry-base "$dry_base")
+  [[ "$_LORNA_HAS_DRY_ALLOWED_LENGTH" -eq 1 ]] && extra_flags+=(--dry-allowed-length "$dry_allowed_length")
+  [[ "$_LORNA_HAS_DRY_PENALTY_LAST_N" -eq 1 ]] && extra_flags+=(--dry-penalty-last-n "$dry_penalty_last_n")
+  [[ "$_LORNA_HAS_DYNATEMP_RANGE" -eq 1 ]] && extra_flags+=(--dynatemp-range "$dynatemp_range")
+  [[ "$_LORNA_HAS_DYNATEMP_EXP" -eq 1 ]] && extra_flags+=(--dynatemp-exp "$dynatemp_exp")
+  [[ "$_LORNA_HAS_MIROSTAT" -eq 1 ]] && extra_flags+=(--mirostat "$mirostat")
+  [[ "$_LORNA_HAS_MIROSTAT_TAU" -eq 1 ]] && extra_flags+=("$_LORNA_MIROSTAT_TAU_FLAG" "$mirostat_tau")
+  [[ "$_LORNA_HAS_MIROSTAT_ETA" -eq 1 ]] && extra_flags+=("$_LORNA_MIROSTAT_ETA_FLAG" "$mirostat_eta")
   [[ "$_LORNA_HAS_FLASH_ATTN"     -eq 1 ]] && extra_flags+=(--flash-attn "$flash_attn")
 
   [[ -n "$LORNA_VERBOSE" ]] && \
@@ -213,8 +275,8 @@ run_model() {
 run_model_interactive() {
   local model="$1"
   local temp_override="$2"
-  local ctx batch threads temp_default threads_batch ubatch cache_k cache_v flash_attn top_k top_p min_p repeat_penalty
-  read -r ctx batch threads temp_default threads_batch ubatch cache_k cache_v flash_attn top_k top_p min_p repeat_penalty <<< "$(get_model_runtime_config "$model")"
+  local ctx batch threads temp_default threads_batch ubatch cache_k cache_v flash_attn top_k top_p min_p repeat_penalty repeat_last_n frequency_penalty presence_penalty typical_p tfs_z dry_multiplier dry_base dry_allowed_length dry_penalty_last_n dynatemp_range dynatemp_exp mirostat mirostat_tau mirostat_eta
+  read -r ctx batch threads temp_default threads_batch ubatch cache_k cache_v flash_attn top_k top_p min_p repeat_penalty repeat_last_n frequency_penalty presence_penalty typical_p tfs_z dry_multiplier dry_base dry_allowed_length dry_penalty_last_n dynatemp_range dynatemp_exp mirostat mirostat_tau mirostat_eta <<< "$(get_model_runtime_config "$model")"
   local temp="${temp_override:-$temp_default}"
 
   probe_binary_flags
@@ -226,6 +288,20 @@ run_model_interactive() {
   [[ "$_LORNA_HAS_TOP_P"          -eq 1 ]] && extra_flags+=(--top-p "$top_p")
   [[ "$_LORNA_HAS_MIN_P"          -eq 1 ]] && extra_flags+=(--min-p "$min_p")
   [[ "$_LORNA_HAS_REPEAT_PENALTY" -eq 1 ]] && extra_flags+=(--repeat-penalty "$repeat_penalty")
+  [[ "$_LORNA_HAS_REPEAT_LAST_N" -eq 1 ]] && extra_flags+=(--repeat-last-n "$repeat_last_n")
+  [[ "$_LORNA_HAS_FREQUENCY_PENALTY" -eq 1 ]] && extra_flags+=(--frequency-penalty "$frequency_penalty")
+  [[ "$_LORNA_HAS_PRESENCE_PENALTY" -eq 1 ]] && extra_flags+=(--presence-penalty "$presence_penalty")
+  [[ "$_LORNA_HAS_TYPICAL" -eq 1 ]] && extra_flags+=("$_LORNA_TYPICAL_FLAG" "$typical_p")
+  [[ "$_LORNA_HAS_TFS" -eq 1 ]] && extra_flags+=("$_LORNA_TFS_FLAG" "$tfs_z")
+  [[ "$_LORNA_HAS_DRY_MULTIPLIER" -eq 1 ]] && extra_flags+=(--dry-multiplier "$dry_multiplier")
+  [[ "$_LORNA_HAS_DRY_BASE" -eq 1 ]] && extra_flags+=(--dry-base "$dry_base")
+  [[ "$_LORNA_HAS_DRY_ALLOWED_LENGTH" -eq 1 ]] && extra_flags+=(--dry-allowed-length "$dry_allowed_length")
+  [[ "$_LORNA_HAS_DRY_PENALTY_LAST_N" -eq 1 ]] && extra_flags+=(--dry-penalty-last-n "$dry_penalty_last_n")
+  [[ "$_LORNA_HAS_DYNATEMP_RANGE" -eq 1 ]] && extra_flags+=(--dynatemp-range "$dynatemp_range")
+  [[ "$_LORNA_HAS_DYNATEMP_EXP" -eq 1 ]] && extra_flags+=(--dynatemp-exp "$dynatemp_exp")
+  [[ "$_LORNA_HAS_MIROSTAT" -eq 1 ]] && extra_flags+=(--mirostat "$mirostat")
+  [[ "$_LORNA_HAS_MIROSTAT_TAU" -eq 1 ]] && extra_flags+=("$_LORNA_MIROSTAT_TAU_FLAG" "$mirostat_tau")
+  [[ "$_LORNA_HAS_MIROSTAT_ETA" -eq 1 ]] && extra_flags+=("$_LORNA_MIROSTAT_ETA_FLAG" "$mirostat_eta")
   [[ "$_LORNA_HAS_FLASH_ATTN"     -eq 1 ]] && extra_flags+=(--flash-attn "$flash_attn")
 
   echo -e "${DIM}  ctx=$ctx  batch=$batch/$ubatch  threads=$threads/$threads_batch  temp=$temp${NC}"

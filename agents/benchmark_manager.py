@@ -31,6 +31,20 @@ DEFAULT_CONFIG = {
     "top_p": 0.95,
     "min_p": 0.05,
     "repeat_penalty": 1.05,
+    "repeat_last_n": 64,
+    "frequency_penalty": 0.0,
+    "presence_penalty": 0.0,
+    "typical_p": 1.0,
+    "tfs_z": 1.0,
+    "dry_multiplier": 0.0,
+    "dry_base": 1.75,
+    "dry_allowed_length": 2,
+    "dry_penalty_last_n": 64,
+    "dynatemp_range": 0.0,
+    "dynatemp_exp": 1.0,
+    "mirostat": 0,
+    "mirostat_tau": 5.0,
+    "mirostat_eta": 0.1,
     "cache_k": "q4_0",
     "cache_v": "q4_0",
     "flash_attn": "auto",
@@ -199,6 +213,45 @@ def supported_flag(help_text: str, flag: str) -> bool:
     return flag in help_text
 
 
+# The Termux llama.cpp package can expose historical names for a few sampler
+# controls. Keep aliases together so both sweep execution and normal Lorna
+# runs can select the form advertised by the local binary.
+SAMPLING_FLAG_ALIASES: dict[str, tuple[str, ...]] = {
+    "top_k": ("--top-k",),
+    "top_p": ("--top-p",),
+    "min_p": ("--min-p",),
+    "repeat_penalty": ("--repeat-penalty",),
+    "repeat_last_n": ("--repeat-last-n",),
+    "frequency_penalty": ("--frequency-penalty",),
+    "presence_penalty": ("--presence-penalty",),
+    "typical_p": ("--typical-p", "--typical"),
+    "tfs_z": ("--tfs-z", "--tfs"),
+    "dry_multiplier": ("--dry-multiplier",),
+    "dry_base": ("--dry-base",),
+    "dry_allowed_length": ("--dry-allowed-length",),
+    "dry_penalty_last_n": ("--dry-penalty-last-n",),
+    "dynatemp_range": ("--dynatemp-range",),
+    "dynatemp_exp": ("--dynatemp-exp",),
+    "mirostat": ("--mirostat",),
+    "mirostat_tau": ("--mirostat-ent", "--mirostat-tau"),
+    "mirostat_eta": ("--mirostat-lr", "--mirostat-eta"),
+}
+
+
+def supported_flag_alias(help_text: str, flags: tuple[str, ...]) -> str | None:
+    """Return the first local CLI spelling advertised for a sampler setting."""
+    return next((flag for flag in flags if supported_flag(help_text, flag)), None)
+
+
+def unsupported_sampling_parameters(config: dict[str, Any], base: dict[str, Any], help_text: str) -> list[str]:
+    """Avoid no-op sampling rows when the local llama-cli lacks an option."""
+    unsupported = []
+    for key, flags in SAMPLING_FLAG_ALIASES.items():
+        if config.get(key) != base.get(key) and supported_flag_alias(help_text, flags) is None:
+            unsupported.append(key)
+    return unsupported
+
+
 def parse_raw_tps(text: str) -> tuple[str | None, str | None]:
     prompt = re.findall(r"Prompt:\s*([0-9]+(?:\.[0-9]+)?)\s*t/s", text, flags=re.I)
     generation = re.findall(r"Generation:\s*([0-9]+(?:\.[0-9]+)?)\s*t/s", text, flags=re.I)
@@ -269,17 +322,38 @@ def profile_configurations(profile: str, base: dict[str, Any]) -> list[dict[str,
         for flash_attn in ("off", "auto"):
             add(f"flash_attn={flash_attn}", flash_attn=flash_attn)
     elif profile == "sampling":
+        # Vary one sampler family at a time. This keeps measurements attributable
+        # on a small phone while allowing unsupported options to be skipped.
         add("sampling baseline")
         for temperature in (0.0, 0.1, 0.2, 0.4, 0.7):
             add(f"temperature={temperature}", temperature=temperature)
-        for top_k in (20, 40, 80):
+        for top_k in (10, 20, 40, 60, 80, 100):
             add(f"top_k={top_k}", top_k=top_k)
         for top_p in (0.80, 0.90, 0.95):
             add(f"top_p={top_p}", top_p=top_p)
         for min_p in (0.0, 0.05, 0.10):
             add(f"min_p={min_p}", min_p=min_p)
-        for repeat_penalty in (1.0, 1.05, 1.10):
+        for repeat_penalty in (1.0, 1.02, 1.05, 1.08, 1.10, 1.15, 1.20):
             add(f"repeat_penalty={repeat_penalty}", repeat_penalty=repeat_penalty)
+        for repeat_last_n in (0, 32, 64, 128, 256):
+            add(f"repeat_last_n={repeat_last_n}", repeat_last_n=repeat_last_n)
+        for frequency_penalty in (0.0, 0.05, 0.10, 0.20):
+            add(f"frequency_penalty={frequency_penalty}", frequency_penalty=frequency_penalty)
+        for presence_penalty in (0.0, 0.05, 0.10, 0.20):
+            add(f"presence_penalty={presence_penalty}", presence_penalty=presence_penalty)
+        for typical_p in (0.80, 0.90, 0.95, 1.0):
+            add(f"typical_p={typical_p}", typical_p=typical_p)
+        for tfs_z in (0.80, 0.90, 0.95, 1.0):
+            add(f"tfs_z={tfs_z}", tfs_z=tfs_z)
+        for dynatemp_range, dynatemp_exp in ((0.20, 1.0), (0.40, 1.0), (0.20, 1.50)):
+            add(f"dynatemp={dynatemp_range}/{dynatemp_exp}", dynatemp_range=dynatemp_range,
+                dynatemp_exp=dynatemp_exp)
+        for dry_multiplier, dry_allowed_length in ((0.50, 2), (0.80, 2), (0.80, 4)):
+            add(f"dry={dry_multiplier}/{dry_allowed_length}", dry_multiplier=dry_multiplier,
+                dry_allowed_length=dry_allowed_length)
+        for mirostat, mirostat_tau, mirostat_eta in ((1, 5.0, 0.10), (2, 5.0, 0.10), (2, 4.0, 0.05)):
+            add(f"mirostat={mirostat} tau={mirostat_tau} eta={mirostat_eta}", mirostat=mirostat,
+                mirostat_tau=mirostat_tau, mirostat_eta=mirostat_eta)
     else:
         raise ValueError(f"Unknown profile: {profile}")
     return configs
@@ -301,8 +375,13 @@ def config_summary(config: dict[str, Any]) -> str:
         f"ctx={config.get('ctx')} t={config.get('threads')}/{config.get('threads_batch')} "
         f"b={config.get('batch')}/{config.get('ubatch')} temp={config.get('temperature')} "
         f"k={config.get('top_k')} p={config.get('top_p')} min_p={config.get('min_p')} "
-        f"rep={config.get('repeat_penalty')} cache={config.get('cache_k')}/{config.get('cache_v')} "
-        f"fa={config.get('flash_attn')}"
+        f"rep={config.get('repeat_penalty')}@{config.get('repeat_last_n')} "
+        f"freq={config.get('frequency_penalty')} pres={config.get('presence_penalty')} "
+        f"typ={config.get('typical_p')} tfs={config.get('tfs_z')} "
+        f"dry={config.get('dry_multiplier')}/{config.get('dry_allowed_length')} "
+        f"dyn={config.get('dynatemp_range')}/{config.get('dynatemp_exp')} "
+        f"miro={config.get('mirostat')}:{config.get('mirostat_tau')}/{config.get('mirostat_eta')} "
+        f"cache={config.get('cache_k')}/{config.get('cache_v')} fa={config.get('flash_attn')}"
     )
 
 
@@ -317,14 +396,10 @@ def build_command(binary: str, model: Path, prompt_file: Path, config: dict[str,
         command.extend(["--threads-batch", str(config["threads_batch"])])
     if supported_flag(help_text, "--ubatch-size"):
         command.extend(["--ubatch-size", str(config["ubatch"])])
-    if supported_flag(help_text, "--top-k"):
-        command.extend(["--top-k", str(config["top_k"])])
-    if supported_flag(help_text, "--top-p"):
-        command.extend(["--top-p", str(config["top_p"])])
-    if supported_flag(help_text, "--min-p"):
-        command.extend(["--min-p", str(config["min_p"])])
-    if supported_flag(help_text, "--repeat-penalty"):
-        command.extend(["--repeat-penalty", str(config["repeat_penalty"])])
+    for key, flags in SAMPLING_FLAG_ALIASES.items():
+        flag = supported_flag_alias(help_text, flags)
+        if flag:
+            command.extend([flag, str(config[key])])
     if supported_flag(help_text, "--cache-type-k"):
         command.extend(["--cache-type-k", str(config["cache_k"]), "--cache-type-v", str(config["cache_v"])])
     if supported_flag(help_text, "--flash-attn"):
@@ -416,8 +491,21 @@ def run_sweep(model_query: str, profile: str = "core") -> str:
         key = configuration_key(model.name, profile, config)
         blocked_key = unsupported_key(model.name, profile, config, base)
         prior = memory["completed_configurations"].get(key)
+        unavailable = unsupported_sampling_parameters(config, base, help_text) if profile == "sampling" else []
         if blocked_key in memory["unsupported_parameters"]:
             entry = {**config, "status": "SKIPPED_UNSUPPORTED", "sequence": index, "reused": True}
+        elif unavailable:
+            entry = {
+                **config,
+                "status": "SKIPPED_UNSUPPORTED",
+                "sequence": index,
+                "unsupported_parameters": ", ".join(unavailable),
+            }
+            memory["unsupported_parameters"][blocked_key] = {
+                "timestamp": now_iso(),
+                "label": config.get("label", "sampling option"),
+                "reason": f"Local llama-cli does not advertise: {', '.join(unavailable)}",
+            }
         elif prior and prior.get("status") in {"OK", "UNSUPPORTED"}:
             entry = {**config, **prior, "sequence": index, "reused": True}
         else:
@@ -603,6 +691,10 @@ def active_preset_line(model_query: str) -> str:
         config["ctx"], config["batch"], config["threads"], config["temperature"],
         config["threads_batch"], config["ubatch"], config["cache_k"], config["cache_v"],
         config["flash_attn"], config["top_k"], config["top_p"], config["min_p"], config["repeat_penalty"],
+        config["repeat_last_n"], config["frequency_penalty"], config["presence_penalty"],
+        config["typical_p"], config["tfs_z"], config["dry_multiplier"], config["dry_base"],
+        config["dry_allowed_length"], config["dry_penalty_last_n"], config["dynatemp_range"],
+        config["dynatemp_exp"], config["mirostat"], config["mirostat_tau"], config["mirostat_eta"],
     )
     return " ".join(str(value) for value in values)
 
@@ -636,7 +728,7 @@ def profile_report() -> str:
         "Benchmark profiles:\n"
         "  core     8 baseline combinations: ctx, generation threads, batch.\n"
         "  runtime  runtime parameters around the current best: ctx, generation/batch threads, batch, ubatch, KV cache, flash attention.\n"
-        "  sampling sampling parameters: temperature, top-k, top-p, min-p, repeat penalty.\n"
+        "  sampling advanced controls: temperature, top-k/top-p/min-p, repetition window and penalty, frequency/presence, typical and tail-free, dynamic temperature, DRY, and Mirostat.\n"
         "Profiles resume completed configurations from benchmark memory. Run one profile at a time."
     )
 

@@ -37,7 +37,7 @@ benchmark rollback qwen
 benchmark memory
 ```
 
-`benchmark sweep <model> core` runs the eight safe baseline combinations. `runtime` then varies context, generation threads, prompt/batch threads, logical and physical batch size, KV-cache precision, and flash-attention mode around the current best candidate. `sampling` varies temperature, top-k, top-p, min-p, and repeat penalty while retaining response tails for later quality review. Each completed configuration is retained in `agents/benchmark_memory.json`; reruns resume instead of repeating successful configurations.
+`benchmark sweep <model> core` runs the eight safe baseline combinations. `runtime` then varies context, generation threads, prompt/batch threads, logical and physical batch size, KV-cache precision, and flash-attention mode around the current best candidate. `sampling` varies one sampler family at a time: temperature; granular top-k (`10`–`100`); top-p/min-p; repeat penalty (`1.00`–`1.20`) and repeat window; frequency/presence penalties; typical and tail-free sampling; dynamic temperature; DRY; and Mirostat. The manager reads local `llama-cli --help` first: any row changing a sampler not advertised by the installed build becomes `SKIPPED_UNSUPPORTED`, is remembered, and is never launched. Each completed configuration is retained in `agents/benchmark_memory.json`; reruns resume instead of repeating successful configurations.
 
 ## Application and Optimization
 
@@ -47,11 +47,11 @@ Use `benchmark optimize <model>` to resume the core, runtime, and sampling profi
 
 ## Recommendation Standard
 
-Recommend only a configuration that completed all required tests without a crash or critical-memory deferral. Give the model name, context, thread count, batch size, temperature, speed, and whether the speed is raw or estimated. Explain when a faster small model should be used for responsiveness and when a slower larger model should be reserved for higher-quality reasoning.
+Recommend only a configuration that completed all required tests without a crash or critical-memory deferral. Give the model name, context, thread count, batch size, temperature, relevant sampler settings, speed, and whether the speed is raw or estimated. Treat throughput-only sampling results as performance observations, not a quality verdict. Explain when a faster small model should be used for responsiveness and when a slower larger model should be reserved for higher-quality reasoning.
 
 ## Current Device Knowledge
 
-The phone is a Redmi 13C running Termux with roughly 3.7 GB usable RAM. Known safe candidates include Qwen 2.5 0.5B and SmolLM2 360M. TinyDolphin 2.8 1.1B is currently recorded as corrupt and must be skipped until its GGUF is replaced.
+The phone is a Redmi 13C running Termux with roughly 3.7 GB usable RAM. Known safe candidates include Qwen 2.5 0.5B and SmolLM2 360M. Prefer SmolLM2 when responsiveness is the priority. For SmolLM2, run `core`, then `runtime`, then the expanded `sampling` profile, and finally `apply`; use `optimize smollm` to run this sequence with resume behavior. TinyDolphin 2.8 1.1B is currently recorded as corrupt and must be skipped until its GGUF is replaced.
 
 ## Recovery
 

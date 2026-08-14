@@ -17,6 +17,7 @@ from typing import Any
 
 AGENT_DIR = Path(__file__).resolve().parent
 MEMORY_PATH = AGENT_DIR / "benchmark_memory.json"
+PRESET_STATE_PATH = Path.home() / ".lorna_v2" / "optimized_presets.json"
 MODELS_DIR = Path.home() / "models"
 DEFAULT_PROMPT = "Explain the convergence of the p-series and relate it to the Riemann zeta function."
 DEFAULT_CONFIG = {
@@ -99,6 +100,26 @@ def save_memory(memory: dict[str, Any]) -> None:
     temp.replace(MEMORY_PATH)
 
 
+def load_preset_state() -> dict[str, Any]:
+    if not PRESET_STATE_PATH.exists():
+        return {"schema_version": 1, "presets": {}, "history": []}
+    try:
+        state = json.loads(PRESET_STATE_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        state = {"schema_version": 1, "presets": {}, "history": []}
+    state.setdefault("schema_version", 1)
+    state.setdefault("presets", {})
+    state.setdefault("history", [])
+    return state
+
+
+def save_preset_state(state: dict[str, Any]) -> None:
+    PRESET_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    temp = PRESET_STATE_PATH.with_suffix(".json.tmp")
+    temp.write_text(json.dumps(state, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    temp.replace(PRESET_STATE_PATH)
+
+
 def memory_mb() -> tuple[int, int]:
     available = total = 0
     try:
@@ -137,10 +158,14 @@ def discover_models() -> list[Path]:
 
 
 def resolve_model(query: str) -> Path | None:
-    query = query.strip().lower()
+    raw_query = query.strip()
+    query = raw_query.lower()
     models = discover_models()
     if not query:
         return None
+    direct_path = Path(raw_query).expanduser()
+    if direct_path.is_file() and direct_path.suffix.lower() == ".gguf":
+        return direct_path
     aliases = {
         "qwen": "qwen2.5-0.5b-instruct-q4_k_m.gguf",
         "smollm": "smollm2-360m-instruct-q4_k_m.gguf",
@@ -467,6 +492,121 @@ def format_run(run: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def apply_recommendation(model_query: str, verify: bool = True) -> str:
+    model = resolve_model(model_query)
+    if model is None:
+        return "Unknown model. Use `benchmark models` to list selectable model names."
+    memory = load_memory()
+    recommendation = memory.get("recommendations", {}).get(model.name)
+    if not recommendation:
+        return f"No runtime recommendation exists for {model.name}. Run core and runtime profiles first."
+
+    config = dict(DEFAULT_CONFIG)
+    config.update(recommendation.get("config", {}))
+    verification: dict[str, Any] | None = None
+    if verify:
+        available, _ = memory_mb()
+        if available < 550:
+            return f"Apply deferred: only {available}MB RAM available. Free memory and retry verification."
+        verification = run_configuration(model, config, "runtime", llama_help())
+        if verification.get("status") != "OK":
+            return f"Apply cancelled: verification returned {verification.get('status')}. Existing preset was left unchanged."
+        expected = float(recommendation.get("generation_tps", 0) or 0)
+        observed = float(verification.get("generation_tps", 0) or 0)
+        if expected > 0 and observed < expected * 0.70:
+            return (
+                f"Apply deferred: verification measured {observed:.2f} t/s, below the 70% stability floor of "
+                f"{expected * 0.70:.2f} t/s. Existing preset was left unchanged."
+            )
+
+    state = load_preset_state()
+    previous = state["presets"].get(model.name)
+    preset = {
+        "model": model.name,
+        "model_path": str(model),
+        "config": config,
+        "source_profile": recommendation.get("profile", "runtime"),
+        "source_speed_tps": recommendation.get("generation_tps"),
+        "source_speed_kind": recommendation.get("generation_source"),
+        "applied_at": now_iso(),
+        "verification": verification,
+    }
+    state["presets"][model.name] = preset
+    state["history"].append({"timestamp": now_iso(), "model": model.name, "previous": previous, "applied": preset})
+    state["history"] = state["history"][-50:]
+    save_preset_state(state)
+    measured = verification.get("generation_tps") if verification else "not run"
+    return f"Applied optimized preset for {model.name}: {config_summary(config)}. Verification: {measured} t/s."
+
+
+def rollback_preset(model_query: str) -> str:
+    model = resolve_model(model_query)
+    if model is None:
+        return "Unknown model. Use `benchmark models` to list selectable model names."
+    state = load_preset_state()
+    for entry in reversed(state.get("history", [])):
+        if entry.get("model") != model.name:
+            continue
+        previous = entry.get("previous")
+        if previous is None:
+            state["presets"].pop(model.name, None)
+            message = f"Removed the first applied optimized preset for {model.name}; Lorna will use its automatic tier."
+        else:
+            state["presets"][model.name] = previous
+            message = f"Restored the previous optimized preset for {model.name}."
+        state["history"].append({"timestamp": now_iso(), "model": model.name, "rollback": True, "restored": previous})
+        state["history"] = state["history"][-50:]
+        save_preset_state(state)
+        return message
+    return f"No preset history exists for {model.name}."
+
+
+def optimize_model(model_query: str) -> str:
+    model = resolve_model(model_query)
+    if model is None:
+        return "Unknown model. Use `benchmark models` to list selectable model names."
+    memory = load_memory()
+    if memory.get("known_models", {}).get(model.name, {}).get("status") == "corrupt":
+        return f"{model.name} is recorded as CORRUPT. Replace the GGUF before optimization."
+
+    outputs = []
+    for profile in ("core", "runtime", "sampling"):
+        outputs.append(run_sweep(model.name, profile))
+    outputs.append(apply_recommendation(model.name, verify=True))
+    return "\n\n".join(outputs)
+
+
+def optimize_all() -> str:
+    memory = load_memory()
+    candidates = [
+        name for name, details in memory.get("known_models", {}).items()
+        if details.get("status") in {"safe_candidate", "candidate", "optimized"} and resolve_model(name)
+    ]
+    if not candidates:
+        return "No safe model candidates are recorded. Run `benchmark models` and classify a candidate first."
+    outputs = []
+    for name in candidates:
+        outputs.append(f"=== Optimizing {name} ===\n{optimize_model(name)}")
+    return "\n\n".join(outputs)
+
+
+def active_preset_line(model_query: str) -> str:
+    model = resolve_model(model_query)
+    if model is None:
+        return ""
+    preset = load_preset_state().get("presets", {}).get(model.name)
+    if not preset:
+        return ""
+    config = dict(DEFAULT_CONFIG)
+    config.update(preset.get("config", {}))
+    values = (
+        config["ctx"], config["batch"], config["threads"], config["temperature"],
+        config["threads_batch"], config["ubatch"], config["cache_k"], config["cache_v"],
+        config["flash_attn"], config["top_k"], config["top_p"], config["min_p"], config["repeat_penalty"],
+    )
+    return " ".join(str(value) for value in values)
+
+
 def models_report() -> str:
     memory = load_memory()
     lines = ["Available model candidates:"]
@@ -512,6 +652,10 @@ def command(command_text: str) -> str:
             "  benchmark profiles                       describe staged parameter profiles\n"
             "  benchmark sweep qwen [core|runtime|sampling]\n"
             "  benchmark sweep smollm [core|runtime|sampling]\n"
+            "  benchmark apply <qwen|smollm>            verify and activate the retained best preset\n"
+            "  benchmark optimize <qwen|smollm|all>     run staged profiles then apply verified winners\n"
+            "  benchmark active <qwen|smollm>           print the active optimized preset\n"
+            "  benchmark rollback <qwen|smollm>         restore the previous preset or auto tier\n"
             "  benchmark memory                         show retained benchmark recommendations"
         )
     if action == "models":
@@ -528,6 +672,27 @@ def command(command_text: str) -> str:
         if len(parts) < 2:
             return "Usage: benchmark sweep <qwen|smollm> [core|runtime|sampling]"
         return run_sweep(parts[1], parts[2].lower() if len(parts) > 2 else "core")
+    if action == "apply":
+        if len(parts) != 2:
+            return "Usage: benchmark apply <qwen|smollm>"
+        return apply_recommendation(parts[1], verify=True)
+    if action == "optimize":
+        if len(parts) != 2:
+            return "Usage: benchmark optimize <qwen|smollm|all>"
+        return optimize_all() if parts[1].lower() == "all" else optimize_model(parts[1])
+    if action == "active":
+        if len(parts) != 2:
+            return "Usage: benchmark active <qwen|smollm>"
+        line = active_preset_line(parts[1])
+        return line or "No active optimized preset is stored for that model."
+    if action == "rollback":
+        if len(parts) != 2:
+            return "Usage: benchmark rollback <qwen|smollm>"
+        return rollback_preset(parts[1])
+    if action == "preset-line":
+        if len(parts) != 2:
+            return ""
+        return active_preset_line(parts[1])
     return "Unknown benchmark action. Use `benchmark help`."
 
 

@@ -29,10 +29,21 @@ benchmark sweep qwen core
 benchmark sweep qwen runtime
 benchmark sweep qwen sampling
 benchmark sweep smollm core
+benchmark apply qwen
+benchmark optimize qwen
+benchmark optimize all
+benchmark active qwen
+benchmark rollback qwen
 benchmark memory
 ```
 
 `benchmark sweep <model> core` runs the eight safe baseline combinations. `runtime` then varies context, generation threads, prompt/batch threads, logical and physical batch size, KV-cache precision, and flash-attention mode around the current best candidate. `sampling` varies temperature, top-k, top-p, min-p, and repeat penalty while retaining response tails for later quality review. Each completed configuration is retained in `agents/benchmark_memory.json`; reruns resume instead of repeating successful configurations.
+
+## Application and Optimization
+
+Use `benchmark apply <model>` only after a runtime candidate exists. The agent re-runs the candidate and activates it only when verification succeeds and reaches at least 70% of the recorded candidate throughput. Applied settings are device-local in `~/.lorna_v2/optimized_presets.json`, with the prior preset retained in history. Use `benchmark rollback <model>` to restore the previous setting or return to Lorna's automatic tier after the first application. Lorna's normal model runners load the active optimized preset automatically.
+
+Use `benchmark optimize <model>` to resume the core, runtime, and sampling profiles then apply the verified winner. Use `benchmark optimize all` only when the device is idle and powered, because it sequentially optimizes every recorded safe candidate. Never apply a corrupt, low-memory-deferred, or unverified candidate.
 
 ## Recommendation Standard
 

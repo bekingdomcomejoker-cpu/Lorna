@@ -319,7 +319,7 @@ def main():
         elif user_input == "/tools":
             print("Available tool commands:")
             print("  benchmark, skills, skill, ls, cd, pwd, cat, write, cp, mv, rm --force, run, fetch, find, grep, df, free, ps, help")
-            print("  Benchmark: /benchmark status | models | profiles | sweep qwen [core|runtime|sampling] | memory")
+            print("  Benchmark: /benchmark status | profiles | sweep <model> [core|runtime|sampling] | apply <model> | optimize <model|all> | active <model> | rollback <model> | memory")
             print("  Skill IDs can be built-in names such as manus-api or library:<source>/<path>.")
             print("Type any of these to use them. Everything else goes to the model.")
         elif user_input == "/skills":

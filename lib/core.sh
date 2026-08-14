@@ -79,14 +79,28 @@ export LLAMA_BIN
 _LORNA_FLAGS_TESTED=0
 _LORNA_HAS_NO_WARMUP=0
 _LORNA_HAS_CACHE_TYPE=0
+_LORNA_HAS_THREADS_BATCH=0
+_LORNA_HAS_UBATCH=0
+_LORNA_HAS_TOP_K=0
+_LORNA_HAS_TOP_P=0
+_LORNA_HAS_MIN_P=0
+_LORNA_HAS_REPEAT_PENALTY=0
+_LORNA_HAS_FLASH_ATTN=0
 
 probe_binary_flags() {
   [[ "$_LORNA_FLAGS_TESTED" -eq 1 ]] && return
   [[ -z "$LLAMA_BIN" || ! -x "$LLAMA_BIN" ]] && { _LORNA_FLAGS_TESTED=1; return; }
   local help_text
   help_text=$("$LLAMA_BIN" --help 2>&1 || true)
-  echo "$help_text" | grep -q "no-warmup"    && _LORNA_HAS_NO_WARMUP=1
-  echo "$help_text" | grep -q "cache-type-k" && _LORNA_HAS_CACHE_TYPE=1
+  echo "$help_text" | grep -q "no-warmup"      && _LORNA_HAS_NO_WARMUP=1
+  echo "$help_text" | grep -q "cache-type-k"   && _LORNA_HAS_CACHE_TYPE=1
+  echo "$help_text" | grep -q "threads-batch"  && _LORNA_HAS_THREADS_BATCH=1
+  echo "$help_text" | grep -q "ubatch-size"    && _LORNA_HAS_UBATCH=1
+  echo "$help_text" | grep -q "top-k"          && _LORNA_HAS_TOP_K=1
+  echo "$help_text" | grep -q "top-p"          && _LORNA_HAS_TOP_P=1
+  echo "$help_text" | grep -q "min-p"          && _LORNA_HAS_MIN_P=1
+  echo "$help_text" | grep -q "repeat-penalty" && _LORNA_HAS_REPEAT_PENALTY=1
+  echo "$help_text" | grep -q "flash-attn"     && _LORNA_HAS_FLASH_ATTN=1
   _LORNA_FLAGS_TESTED=1
 }
 
@@ -108,6 +122,24 @@ get_model_tier() {
   fi
 }
 
+# Lorna2 stores validated per-model presets outside the repository so device
+# optimization state survives updates without becoming tracked source data.
+get_model_runtime_config() {
+  local model_path="$1"
+  local ctx batch threads temp
+  read -r ctx batch threads temp <<< "$(get_model_tier "$model_path")"
+  local agent_manager="${LORNA_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}/agents/benchmark_manager.py"
+  local preset_line=""
+  if command -v python3 >/dev/null 2>&1 && [[ -f "$agent_manager" ]]; then
+    preset_line=$(python3 "$agent_manager" preset-line "$model_path" 2>/dev/null || true)
+  fi
+  if [[ "$preset_line" =~ ^[0-9]+[[:space:]][0-9]+[[:space:]][0-9]+[[:space:]][0-9.]+ ]]; then
+    echo "$preset_line"
+  else
+    echo "$ctx $batch $threads $temp $threads $batch q4_0 q4_0 auto 40 0.95 0.05 1.05"
+  fi
+}
+
 get_model_size_mb() { du -m "$1" 2>/dev/null | cut -f1; }
 get_model_name()    { basename "$1" .gguf; }
 
@@ -124,17 +156,25 @@ run_model() {
   local n_tokens="${4:-128}"
   local temp_override="$5"
 
-  read -r ctx batch threads temp_default <<< "$(get_model_tier "$model")"
+  local ctx batch threads temp_default threads_batch ubatch cache_k cache_v flash_attn top_k top_p min_p repeat_penalty
+  read -r ctx batch threads temp_default threads_batch ubatch cache_k cache_v flash_attn top_k top_p min_p repeat_penalty <<< "$(get_model_runtime_config "$model")"
   local temp="${temp_override:-$temp_default}"
 
   probe_binary_flags
 
   local extra_flags=()
-  [[ "$_LORNA_HAS_NO_WARMUP"  -eq 1 ]] && extra_flags+=(--no-warmup)
-  [[ "$_LORNA_HAS_CACHE_TYPE" -eq 1 ]] && extra_flags+=(--cache-type-k q4_0 --cache-type-v q4_0)
+  [[ "$_LORNA_HAS_NO_WARMUP"      -eq 1 ]] && extra_flags+=(--no-warmup)
+  [[ "$_LORNA_HAS_CACHE_TYPE"     -eq 1 ]] && extra_flags+=(--cache-type-k "$cache_k" --cache-type-v "$cache_v")
+  [[ "$_LORNA_HAS_THREADS_BATCH"  -eq 1 ]] && extra_flags+=(--threads-batch "$threads_batch")
+  [[ "$_LORNA_HAS_UBATCH"         -eq 1 ]] && extra_flags+=(--ubatch-size "$ubatch")
+  [[ "$_LORNA_HAS_TOP_K"          -eq 1 ]] && extra_flags+=(--top-k "$top_k")
+  [[ "$_LORNA_HAS_TOP_P"          -eq 1 ]] && extra_flags+=(--top-p "$top_p")
+  [[ "$_LORNA_HAS_MIN_P"          -eq 1 ]] && extra_flags+=(--min-p "$min_p")
+  [[ "$_LORNA_HAS_REPEAT_PENALTY" -eq 1 ]] && extra_flags+=(--repeat-penalty "$repeat_penalty")
+  [[ "$_LORNA_HAS_FLASH_ATTN"     -eq 1 ]] && extra_flags+=(--flash-attn "$flash_attn")
 
   [[ -n "$LORNA_VERBOSE" ]] && \
-    echo -e "${DIM}  → $(get_model_name "$model") ctx=$ctx b=$batch t=$threads temp=$temp n=$n_tokens${NC}" >&2
+    echo -e "${DIM}  → $(get_model_name "$model") ctx=$ctx b=$batch/$ubatch t=$threads/$threads_batch temp=$temp n=$n_tokens${NC}" >&2
 
   local size_mb
   size_mb=$(get_model_size_mb "$model")
@@ -173,14 +213,22 @@ run_model() {
 run_model_interactive() {
   local model="$1"
   local temp_override="$2"
-  read -r ctx batch threads temp_default <<< "$(get_model_tier "$model")"
+  local ctx batch threads temp_default threads_batch ubatch cache_k cache_v flash_attn top_k top_p min_p repeat_penalty
+  read -r ctx batch threads temp_default threads_batch ubatch cache_k cache_v flash_attn top_k top_p min_p repeat_penalty <<< "$(get_model_runtime_config "$model")"
   local temp="${temp_override:-$temp_default}"
 
   probe_binary_flags
   local extra_flags=()
-  [[ "$_LORNA_HAS_CACHE_TYPE" -eq 1 ]] && extra_flags+=(--cache-type-k q4_0 --cache-type-v q4_0)
+  [[ "$_LORNA_HAS_CACHE_TYPE"     -eq 1 ]] && extra_flags+=(--cache-type-k "$cache_k" --cache-type-v "$cache_v")
+  [[ "$_LORNA_HAS_THREADS_BATCH"  -eq 1 ]] && extra_flags+=(--threads-batch "$threads_batch")
+  [[ "$_LORNA_HAS_UBATCH"         -eq 1 ]] && extra_flags+=(--ubatch-size "$ubatch")
+  [[ "$_LORNA_HAS_TOP_K"          -eq 1 ]] && extra_flags+=(--top-k "$top_k")
+  [[ "$_LORNA_HAS_TOP_P"          -eq 1 ]] && extra_flags+=(--top-p "$top_p")
+  [[ "$_LORNA_HAS_MIN_P"          -eq 1 ]] && extra_flags+=(--min-p "$min_p")
+  [[ "$_LORNA_HAS_REPEAT_PENALTY" -eq 1 ]] && extra_flags+=(--repeat-penalty "$repeat_penalty")
+  [[ "$_LORNA_HAS_FLASH_ATTN"     -eq 1 ]] && extra_flags+=(--flash-attn "$flash_attn")
 
-  echo -e "${DIM}  ctx=$ctx  batch=$batch  threads=$threads  temp=$temp${NC}"
+  echo -e "${DIM}  ctx=$ctx  batch=$batch/$ubatch  threads=$threads/$threads_batch  temp=$temp${NC}"
   echo -e "${DIM}  Type /exit or Ctrl+C to quit${NC}"
   echo ""
 

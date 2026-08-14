@@ -12,7 +12,7 @@ import moondream_image as moon
 
 
 class MoondreamImageTests(unittest.TestCase):
-    def test_command_uses_alpaca_template_and_bounded_image_settings(self):
+    def test_command_uses_vicuna_legacy_template_and_bounded_image_settings(self):
         command = moon.build_command(
             "llama-mtmd-cli",
             Path("/models/moondream.gguf"),
@@ -22,9 +22,9 @@ class MoondreamImageTests(unittest.TestCase):
         )
         self.assertIn("--image", command)
         self.assertIn("--mmproj", command)
-        self.assertEqual(command[command.index("--chat-template") + 1], "alpaca")
-        self.assertIn("--jinja", command)
-        self.assertNotIn("--no-jinja", command)
+        self.assertEqual(command[command.index("--chat-template") + 1], "vicuna")
+        self.assertIn("--no-jinja", command)
+        self.assertNotIn("--jinja", command)
         self.assertEqual(command[command.index("--image-max-tokens") + 1], "64")
         self.assertEqual(command[command.index("-c") + 1], "2048")
         self.assertIn("--no-mmproj-offload", command)
@@ -51,7 +51,7 @@ class MoondreamImageTests(unittest.TestCase):
             ):
                 response = moon.run(args)
             self.assertIn("Dry run", response)
-            self.assertIn("--chat-template alpaca", response)
+            self.assertIn("--chat-template vicuna", response)
 
 
 if __name__ == "__main__":

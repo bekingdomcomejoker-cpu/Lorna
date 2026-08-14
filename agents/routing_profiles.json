@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "description": "Named Lorna2 routing policies. Profiles resolve to the shared model registry and favor saved benchmark recommendations when available.",
+  "profiles": {
+    "fast": {
+      "description": "Lowest-latency local text response",
+      "stages": ["fast"]
+    },
+    "balanced": {
+      "description": "Refine a request, reason over it, then present a concise answer",
+      "stages": ["fast", "deep", "fast"]
+    },
+    "code": {
+      "description": "Refine a coding request, plan it, produce an implementation, then summarize",
+      "stages": ["fast", "deep", "code", "fast"]
+    },
+    "verify": {
+      "description": "Produce an answer and perform a separate local reasoning review",
+      "stages": ["fast", "deep", "fast"]
+    },
+    "vision": {
+      "description": "Select the lightweight vision path first; no concurrent text model is started",
+      "vision_path": "smolvlm"
+    }
+  },
+  "classification_rules": {
+    "code": ["code", "script", "python", "bash", "bug", "debug", "function", "api"],
+    "verify": ["verify", "check", "validate", "confirm", "review", "compare"],
+    "vision": ["image", "screenshot", "photo", "picture", "visual"],
+    "balanced": ["plan", "explain", "analyze", "reason", "design", "research"]
+  }
+}

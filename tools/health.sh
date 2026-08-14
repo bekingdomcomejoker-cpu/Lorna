@@ -12,6 +12,12 @@ source "$LORNA_DIR/lib/core.sh"
 source "$LORNA_DIR/lib/memory.sh"
 source "$LORNA_DIR/lib/registry.sh"
 
+# Machine-readable health is consumed by Lorna2. The normal command remains
+# the existing interactive diagnostic report.
+if [[ "${1:-}" == "--json" ]]; then
+  exec python3 "$LORNA_DIR/agents/runtime_integration.py" --system-json
+fi
+
 # ─── PORTABLE PROCESS LIST ──────────────────────────────────
 # pgrep -a (show full cmdline) not available in all Termux builds
 list_llama_procs() {

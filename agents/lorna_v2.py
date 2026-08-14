@@ -15,11 +15,13 @@ try:
     from .vision_to_code import command as visual_code_command
     from .vision_bridge import command as vision_bridge_command
     from .moondream_image import command as moondream_image_command
+    from .runtime_integration import format_system_status, pipeline_command, route_command
 except ImportError:
     from benchmark_manager import command as benchmark_command
     from vision_to_code import command as visual_code_command
     from vision_bridge import command as vision_bridge_command
     from moondream_image import command as moondream_image_command
+    from runtime_integration import format_system_status, pipeline_command, route_command
 
 # ===== Configuration =====
 MODELS = {
@@ -130,6 +132,12 @@ def execute_tool(user_input):
         return vision_bridge_command(arg)
     if cmd in {"moondream-image", "moon-image"}:
         return moondream_image_command(arg)
+    if cmd in {"system", "status"}:
+        return format_system_status()
+    if cmd == "route":
+        return route_command(arg)
+    if cmd == "pipeline":
+        return pipeline_command(arg)
 
     # Integrated Drive skills
     if cmd == "skills":
@@ -304,7 +312,7 @@ def chat_with_node(user_input):
 def main():
     global CURRENT_NODE, CWD, ACTIVE_SKILL
     print("[Ω] LORNA v2.0 — Tri-Node + Agent")
-    print("    Commands: /quit, /node <fast|deep|code|agent>, /tools, /skills, /skill, /benchmark, /visual-code, /vision-bridge, /moondream-image, /clear")
+    print("    Commands: /quit, /node <fast|deep|code|agent>, /tools, /skills, /skill, /benchmark, /system, /route, /pipeline, /visual-code, /vision-bridge, /moondream-image, /clear")
     print(f"    Current node: {CURRENT_NODE}")
     print(f"    Current directory: {CWD}")
 
@@ -330,11 +338,14 @@ def main():
                 print(f"Current node: {CURRENT_NODE}")
         elif user_input == "/tools":
             print("Available tool commands:")
-            print("  benchmark, visual-code, vision-bridge, moondream-image, skills, skill, ls, cd, pwd, cat, write, cp, mv, rm --force, run, fetch, find, grep, df, free, ps, help")
+            print("  benchmark, system, route, pipeline, visual-code, vision-bridge, moondream-image, skills, skill, ls, cd, pwd, cat, write, cp, mv, rm --force, run, fetch, find, grep, df, free, ps, help")
             print("  Benchmark: /benchmark status | profiles | sweep <model> [core|runtime|sampling] | apply <model> | optimize <model|all> | active <model> | rollback <model> | memory")
             print("  Moondream image: /moondream-image <image> [question] (prepared image, direct Moondream2 projector path; no HTML)")
             print("  Vision bridge: /vision-bridge <image> [question] (SmolVLM then text-only Moondream2, sequentially; no HTML)")
             print("  Vision-to-code: /visual-code <image> [output-file] (legacy SmolVLM then DeepSeek-Coder path)")
+            print("  System: /system (read-only RAM, storage, binary, model, and process status)")
+            print("  Routing: /route list | /route <profile> | /route auto <request>")
+            print("  Pipeline: /pipeline --dry-run <profile> <request> | /pipeline <profile> <request> (sequential local stages)")
             print("  Skill IDs can be built-in names such as manus-api or library:<source>/<path>.")
             print("Type any of these to use them. Everything else goes to the model.")
         elif user_input == "/skills":
@@ -360,6 +371,12 @@ def main():
                 print(read_integrated_skill(parts[1].lower()))
         elif user_input.startswith("/benchmark"):
             print(benchmark_command(user_input[len("/benchmark"):].strip()))
+        elif user_input.startswith("/system") or user_input.startswith("/status"):
+            print(format_system_status())
+        elif user_input.startswith("/route"):
+            print(route_command(user_input[len("/route"):].strip()))
+        elif user_input.startswith("/pipeline"):
+            print(pipeline_command(user_input[len("/pipeline"):].strip()))
         elif user_input.startswith("/visual-code") or user_input.startswith("/vision-code"):
             if user_input.startswith("/visual-code"):
                 argument = user_input[len("/visual-code"):].strip()

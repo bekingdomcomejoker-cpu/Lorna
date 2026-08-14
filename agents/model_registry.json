@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "description": "Shared Lorna and Lorna2 registry for local model roles, runtime names, and multimodal pairings.",
+  "nodes": {
+    "fast": {
+      "runtime": "ollama",
+      "model": "smollm-fast",
+      "role": "Fast request refinement and concise final presentation",
+      "preferred": true
+    },
+    "deep": {
+      "runtime": "ollama",
+      "model": "deepseek-r1:1.5b",
+      "role": "Reasoning, planning, and verification"
+    },
+    "code": {
+      "runtime": "ollama",
+      "model": "tool-model",
+      "role": "Code and tool-oriented response generation"
+    },
+    "agent": {
+      "runtime": "ollama",
+      "model": "tool-model",
+      "role": "Interactive local agent and tool-oriented response generation"
+    }
+  },
+  "vision": {
+    "smolvlm": {
+      "runtime": "llama-mtmd-cli",
+      "model_filename": "SmolVLM-256M-Instruct-Q4_K_M.gguf",
+      "projector_filename": "mmproj-SmolVLM-256M-Instruct-f16.gguf",
+      "template_mode": "explicit_smolvlm",
+      "role": "Preferred lightweight screenshot and image analysis"
+    },
+    "moondream_2025": {
+      "runtime": "llama-mtmd-cli",
+      "model_filename": "moondream2-text-model-q4_k_m-vicuna-20250414.gguf",
+      "projector_filename": "moondream2-mmproj-f16-20250414.gguf",
+      "template_mode": "embedded",
+      "role": "Direct image analysis when a compatible bounded fixture is used"
+    },
+    "moondream_legacy": {
+      "runtime": "llama-mtmd-cli",
+      "model_filename": "moondream2-050824-q5k.gguf",
+      "projector_filename": "moondream2-mmproj-050824-f16.gguf",
+      "template_mode": "explicit_vicuna",
+      "role": "Legacy fallback retained for rollback only"
+    }
+  }
+}

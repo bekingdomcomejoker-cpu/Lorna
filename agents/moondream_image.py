@@ -38,8 +38,8 @@ except ImportError:
         _which,
     )
 
-DEFAULT_MODEL = HOME / "models" / "moondream2-050824-q5k.gguf"
-DEFAULT_MMPROJ = HOME / "models" / "moondream2-mmproj-050824-f16.gguf"
+DEFAULT_MODEL = HOME / "models" / "moondream2-text-model-q4_k_m-vicuna-20250414.gguf"
+DEFAULT_MMPROJ = HOME / "models" / "moondream2-mmproj-f16-20250414.gguf"
 DEFAULT_WORK_DIR = DEFAULT_WORK_DIR / "moondream2_image"
 
 

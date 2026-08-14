@@ -13,9 +13,11 @@ from pathlib import Path
 try:
     from .benchmark_manager import command as benchmark_command
     from .vision_to_code import command as visual_code_command
+    from .vision_bridge import command as vision_bridge_command
 except ImportError:
     from benchmark_manager import command as benchmark_command
     from vision_to_code import command as visual_code_command
+    from vision_bridge import command as vision_bridge_command
 
 # ===== Configuration =====
 MODELS = {
@@ -122,6 +124,8 @@ def execute_tool(user_input):
         return benchmark_command(arg)
     if cmd in {"visual-code", "vision-code"}:
         return visual_code_command(arg)
+    if cmd in {"vision-bridge", "smol-moondream"}:
+        return vision_bridge_command(arg)
 
     # Integrated Drive skills
     if cmd == "skills":
@@ -296,7 +300,7 @@ def chat_with_node(user_input):
 def main():
     global CURRENT_NODE, CWD, ACTIVE_SKILL
     print("[Ω] LORNA v2.0 — Tri-Node + Agent")
-    print("    Commands: /quit, /node <fast|deep|code|agent>, /tools, /skills, /skill, /benchmark, /visual-code, /clear")
+    print("    Commands: /quit, /node <fast|deep|code|agent>, /tools, /skills, /skill, /benchmark, /visual-code, /vision-bridge, /clear")
     print(f"    Current node: {CURRENT_NODE}")
     print(f"    Current directory: {CWD}")
 
@@ -322,9 +326,10 @@ def main():
                 print(f"Current node: {CURRENT_NODE}")
         elif user_input == "/tools":
             print("Available tool commands:")
-            print("  benchmark, visual-code, skills, skill, ls, cd, pwd, cat, write, cp, mv, rm --force, run, fetch, find, grep, df, free, ps, help")
+            print("  benchmark, visual-code, vision-bridge, skills, skill, ls, cd, pwd, cat, write, cp, mv, rm --force, run, fetch, find, grep, df, free, ps, help")
             print("  Benchmark: /benchmark status | profiles | sweep <model> [core|runtime|sampling] | apply <model> | optimize <model|all> | active <model> | rollback <model> | memory")
-            print("  Vision-to-code: /visual-code <image> [output-file] (SmolVLM then DeepSeek-Coder, sequentially)")
+            print("  Vision bridge: /vision-bridge <image> [question] (SmolVLM then text-only Moondream2, sequentially; no HTML)")
+            print("  Vision-to-code: /visual-code <image> [output-file] (legacy SmolVLM then DeepSeek-Coder path)")
             print("  Skill IDs can be built-in names such as manus-api or library:<source>/<path>.")
             print("Type any of these to use them. Everything else goes to the model.")
         elif user_input == "/skills":
@@ -356,6 +361,12 @@ def main():
             else:
                 argument = user_input[len("/vision-code"):].strip()
             print(visual_code_command(argument))
+        elif user_input.startswith("/vision-bridge") or user_input.startswith("/smol-moondream"):
+            if user_input.startswith("/vision-bridge"):
+                argument = user_input[len("/vision-bridge"):].strip()
+            else:
+                argument = user_input[len("/smol-moondream"):].strip()
+            print(vision_bridge_command(argument))
         elif user_input == "/clear":
             os.system("clear")
         else:

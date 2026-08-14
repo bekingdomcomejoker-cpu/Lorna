@@ -24,6 +24,8 @@ class VisionToCodeTests(unittest.TestCase):
         self.assertIn("--grammar-file", command)
         self.assertEqual(command[command.index("--grammar-file") + 1], str(pipeline.VISUAL_SPEC_GRAMMAR))
         self.assertTrue(pipeline.VISUAL_SPEC_GRAMMAR.is_file())
+        grammar = pipeline.VISUAL_SPEC_GRAMMAR.read_text(encoding="utf-8")
+        self.assertNotIn("\\\\-", grammar)
         self.assertIn("--chat-template", command)
         self.assertEqual(command[command.index("--chat-template") + 1], "smolvlm")
         self.assertIn("--image-max-tokens", command)

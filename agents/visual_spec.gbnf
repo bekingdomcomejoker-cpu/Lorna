@@ -4,4 +4,4 @@ elements ::= "elements: " value
 style ::= "style: " value
 text ::= "text: " value
 value ::= char+
-char ::= [a-zA-Z0-9 .,;:()#/%+_\-]
+char ::= [a-zA-Z0-9 .,;:()#/%+_]

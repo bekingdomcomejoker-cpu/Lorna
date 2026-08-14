@@ -68,7 +68,7 @@ python3 agents/vision_to_code.py \
   --target 'responsive HTML and CSS'
 ```
 
-The visual stage uses a 2,048-token context, small batch and micro-batch sizes, a 128-token image cap, CPU projector execution, and a single image. The CLI’s non-Jinja template path is intentional: it preserves the media marker that `llama-mtmd-cli` automatically adds for a supplied image. A known SmolVLM Jinja-template media-marker issue was fixed upstream after earlier releases, so the non-Jinja path is the safer compatibility default for an unknown Android build. [2]
+The visual stage uses a 2,048-token context, small batch and micro-batch sizes, a 128-token image cap, CPU projector execution, and a single image. It streams `encoding mtmd batch` progress into both Termux and `smolvlm_run.log`; this encoding can take several minutes on the phone, so let advancing batch counts complete. A Ctrl+C now terminates only the active vision subprocess cleanly and prevents the code stage from starting. The CLI’s non-Jinja template path is intentional: it preserves the media marker that `llama-mtmd-cli` automatically adds for a supplied image. A known SmolVLM Jinja-template media-marker issue was fixed upstream after earlier releases, so the non-Jinja path is the safer compatibility default for an unknown Android build. [2]
 
 ## Practical limits
 

@@ -51,6 +51,18 @@ class VisionToCodeTests(unittest.TestCase):
             response = pipeline.run_pipeline(args)
         self.assertIn("missing required file", response)
 
+    def test_cancelled_stage_returns_a_clean_status(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            log_path = Path(temp_dir) / "cancelled.log"
+            with patch("subprocess.run", side_effect=KeyboardInterrupt):
+                status, stdout, combined = pipeline._run_stage(
+                    ["fake-model"], 1, log_path, "Fake stage"
+                )
+            self.assertEqual(status, 130)
+            self.assertEqual(stdout, "")
+            self.assertIn("cancelled", combined)
+            self.assertIn("cancelled", log_path.read_text(encoding="utf-8"))
+
     def test_dry_run_builds_both_stages_without_launching(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)

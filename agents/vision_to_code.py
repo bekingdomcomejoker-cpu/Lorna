@@ -13,6 +13,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
@@ -186,7 +187,71 @@ def _strip_stage_logs(text: str) -> str:
     return content.strip()
 
 
-def _run_stage(command: list[str], timeout: int, log_path: Path, label: str) -> tuple[int, str, str]:
+def _run_stage(
+    command: list[str], timeout: int, log_path: Path, label: str, live_output: bool = False
+) -> tuple[int, str, str]:
+    """Run one model stage, optionally mirroring progress while retaining a complete log."""
+    if live_output:
+        output_parts: list[str] = []
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            process = subprocess.Popen(
+                command,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1,
+            )
+        except OSError as exc:
+            combined = f"Could not start {label}: {exc}"
+            log_path.write_text(combined, encoding="utf-8")
+            return 127, "", combined
+
+        def mirror_output() -> None:
+            assert process.stdout is not None
+            with log_path.open("w", encoding="utf-8") as log_file:
+                for line in iter(process.stdout.readline, ""):
+                    output_parts.append(line)
+                    log_file.write(line)
+                    log_file.flush()
+                    print(line, end="", flush=True)
+
+        reader = threading.Thread(target=mirror_output, daemon=True)
+        reader.start()
+        try:
+            return_code = process.wait(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            process.terminate()
+            try:
+                process.wait(timeout=15)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait()
+            message = f"\n{label} timed out after {timeout}s and was stopped.\n"
+            output_parts.append(message)
+            with log_path.open("a", encoding="utf-8") as log_file:
+                log_file.write(message)
+            return_code = 124
+        except KeyboardInterrupt:
+            process.terminate()
+            try:
+                process.wait(timeout=15)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait()
+            message = f"\n{label} was cancelled by the user; DeepSeek-Coder was not started.\n"
+            output_parts.append(message)
+            with log_path.open("a", encoding="utf-8") as log_file:
+                log_file.write(message)
+            return_code = 130
+        finally:
+            if process.stdout is not None:
+                process.stdout.close()
+            reader.join(timeout=2)
+
+        combined = "".join(output_parts)
+        return return_code, combined, combined
+
     try:
         result = subprocess.run(
             command,
@@ -205,6 +270,10 @@ def _run_stage(command: list[str], timeout: int, log_path: Path, label: str) -> 
         combined = f"{stdout}\n{stderr}\n{label} timed out after {timeout}s."
         log_path.write_text(combined, encoding="utf-8")
         return 124, stdout, combined
+    except KeyboardInterrupt:
+        combined = f"{label} was cancelled by the user."
+        log_path.write_text(combined, encoding="utf-8")
+        return 130, "", combined
     except OSError as exc:
         combined = f"Could not start {label}: {exc}"
         log_path.write_text(combined, encoding="utf-8")
@@ -280,8 +349,13 @@ def run_pipeline(args: argparse.Namespace) -> str:
             f"Work directory: {paths.work_dir}"
         )
 
+    print("Starting SmolVLM visual stage. Live image-encoding progress will appear below; do not interrupt it while batches advance.", flush=True)
     visual_status, _visual_stdout, visual_output = _run_stage(
-        vision_command, args.vision_timeout, paths.visual_log, "SmolVLM vision stage"
+        vision_command,
+        args.vision_timeout,
+        paths.visual_log,
+        "SmolVLM vision stage",
+        live_output=True,
     )
     if visual_status != 0:
         return (
@@ -300,6 +374,7 @@ def run_pipeline(args: argparse.Namespace) -> str:
     coder_prompt = CODE_PROMPT_TEMPLATE.format(target=args.target, visual_spec=visual_spec)
     paths.coder_prompt.write_text(coder_prompt, encoding="utf-8")
 
+    print("SmolVLM completed. Starting DeepSeek-Coder after releasing the vision process.", flush=True)
     coder_status, coder_stdout, coder_output = _run_stage(
         coder_command, args.coder_timeout, paths.coder_log, "DeepSeek-Coder stage"
     )

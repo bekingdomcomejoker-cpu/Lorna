@@ -73,6 +73,7 @@ def default_memory() -> dict[str, Any]:
         },
         "runs": [],
         "completed_configurations": {},
+        "unsupported_parameters": {},
         "recommendations": {},
     }
 
@@ -189,6 +190,12 @@ def classify_failure(text: str, returncode: int) -> str:
         return "CORRUPT"
     if returncode == 124:
         return "TIMEOUT"
+    unsupported_markers = (
+        "unknown argument", "unrecognized option", "not supported", "unsupported", "not compiled",
+        "not available in this build", "flash attention is not supported",
+    )
+    if any(marker in lowered for marker in unsupported_markers):
+        return "UNSUPPORTED"
     return f"ERROR({returncode})"
 
 
@@ -257,6 +264,11 @@ def configuration_key(model_name: str, profile: str, config: dict[str, Any]) -> 
     canonical = {key: value for key, value in config.items() if key != "label"}
     digest = hashlib.sha256(json.dumps(canonical, sort_keys=True).encode()).hexdigest()[:16]
     return f"{model_name}|{profile}|{digest}"
+
+
+def unsupported_key(model_name: str, profile: str, config: dict[str, Any], base: dict[str, Any]) -> str:
+    changed = {key: value for key, value in config.items() if key != "label" and base.get(key) != value}
+    return f"{model_name}|{profile}|" + json.dumps(changed, sort_keys=True)
 
 
 def config_summary(config: dict[str, Any]) -> str:
@@ -377,8 +389,11 @@ def run_sweep(model_query: str, profile: str = "core") -> str:
 
     for index, config in enumerate(configurations, start=1):
         key = configuration_key(model.name, profile, config)
+        blocked_key = unsupported_key(model.name, profile, config, base)
         prior = memory["completed_configurations"].get(key)
-        if prior and prior.get("status") == "OK":
+        if blocked_key in memory["unsupported_parameters"]:
+            entry = {**config, "status": "SKIPPED_UNSUPPORTED", "sequence": index, "reused": True}
+        elif prior and prior.get("status") in {"OK", "UNSUPPORTED"}:
             entry = {**config, **prior, "sequence": index, "reused": True}
         else:
             available, _ = memory_mb()
@@ -387,6 +402,12 @@ def run_sweep(model_query: str, profile: str = "core") -> str:
             else:
                 entry = {**config, "sequence": index, **run_configuration(model, config, profile, help_text)}
             memory["completed_configurations"][key] = {k: v for k, v in entry.items() if k != "sequence"}
+            if entry.get("status") == "UNSUPPORTED":
+                memory["unsupported_parameters"][blocked_key] = {
+                    "timestamp": now_iso(),
+                    "label": config.get("label", "runtime option"),
+                    "reason": entry.get("stderr_tail", "")[-300:],
+                }
         run["configurations"].append(entry)
         if entry.get("status") == "CORRUPT":
             memory["known_models"][model.name] = {
@@ -464,6 +485,7 @@ def memory_report() -> str:
             f"{recommendation.get('generation_tps')} t/s ({recommendation.get('generation_source')})"
         )
     lines.append(f"  Retained completed configurations: {len(memory.get('completed_configurations', {}))}")
+    lines.append(f"  Retained unsupported parameter sets: {len(memory.get('unsupported_parameters', {}))}")
     if not memory.get("recommendations"):
         lines.append("  No completed sweep recommendations yet.")
     return "\n".join(lines)

@@ -20,6 +20,10 @@ class VisionToCodeTests(unittest.TestCase):
             Path("/images/source.png"),
         )
         self.assertIn("--no-jinja", command)
+        self.assertIn("-sys", command)
+        self.assertIn("--grammar-file", command)
+        self.assertEqual(command[command.index("--grammar-file") + 1], str(pipeline.VISUAL_SPEC_GRAMMAR))
+        self.assertTrue(pipeline.VISUAL_SPEC_GRAMMAR.is_file())
         self.assertIn("--chat-template", command)
         self.assertEqual(command[command.index("--chat-template") + 1], "smolvlm")
         self.assertIn("--image-max-tokens", command)
@@ -31,13 +35,19 @@ class VisionToCodeTests(unittest.TestCase):
         raw = (
             "0.01.000 I mtmd: loading\n"
             "BEGIN_VISUAL_SPEC\n"
-            "canvas: white\ncomponents: button\n"
+            "layout: white page\nelements: button\nstyle: simple\ntext: unreadable\n"
             "END_VISUAL_SPEC\n"
             "0.10.000 I perf done\n"
         )
         self.assertEqual(
             pipeline._strip_stage_logs(raw),
-            "canvas: white\ncomponents: button",
+            "layout: white page\nelements: button\nstyle: simple\ntext: unreadable",
+        )
+
+    def test_unstructured_vision_text_is_rejected(self):
+        self.assertEqual(
+            pipeline._strip_stage_logs("0.10.000 I loading\nScreen displaying a code reconstruction page.\n"),
+            "",
         )
 
     def test_help_command_describes_sequential_memory_safe_behavior(self):

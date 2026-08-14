@@ -1,0 +1,7 @@
+root ::= "BEGIN_VISUAL_SPEC\n" layout "\n" elements "\n" style "\n" text "\nEND_VISUAL_SPEC"
+layout ::= "layout: " value
+elements ::= "elements: " value
+style ::= "style: " value
+text ::= "text: " value
+value ::= char+
+char ::= [a-zA-Z0-9 .,;:()#/%+_\-]

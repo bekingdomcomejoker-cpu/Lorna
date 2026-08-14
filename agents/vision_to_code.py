@@ -20,21 +20,21 @@ from typing import Iterable
 
 
 HOME = Path.home()
+AGENT_DIR = Path(__file__).resolve().parent
 DEFAULT_VISION_MODEL = HOME / "models" / "SmolVLM-256M-Instruct-Q4_K_M.gguf"
 DEFAULT_MMPROJ = HOME / "models" / "mmproj-SmolVLM-256M-Instruct-f16.gguf"
 DEFAULT_CODER_MODEL = HOME / "models" / "deepseek-coder-1.3b-instruct-q4_k_m.gguf"
 DEFAULT_WORK_DIR = HOME / ".lorna_v2" / "visual_to_code"
+VISUAL_SPEC_GRAMMAR = AGENT_DIR / "visual_spec.gbnf"
 
-VISUAL_SPEC_PROMPT = """Analyze the supplied image for code reconstruction.
-Return only the following compact specification, with no prose before or after it:
+VISION_SYSTEM_PROMPT = """You are a precise visual interface analyst. Describe only what is visible in the supplied image. Never invent text, controls, colors, or layout details."""
+
+VISUAL_SPEC_PROMPT = """Analyze the supplied image for code reconstruction. Return exactly this compact specification:
 BEGIN_VISUAL_SPEC
-canvas: background, overall width behavior
-sections: top-to-bottom layout and hierarchy
-components: cards, buttons, inputs, images, icons, and labels
-spacing: approximate padding, gaps, alignment, and grid behavior
-style: colors, borders, radius, shadows, typography hierarchy
-responsive: likely small-screen behavior
-text: visible text, or [unreadable] where it cannot be read reliably
+layout: top-to-bottom sections and hierarchy
+elements: visible controls, cards, images, labels, or keyboard
+style: colors, spacing, typography, borders, and alignment
+text: visible text, or [unreadable]
 END_VISUAL_SPEC"""
 
 CODE_PROMPT_TEMPLATE = """Create a complete {target} implementation from the visual specification below.
@@ -112,8 +112,12 @@ def build_vision_command(
         str(mmproj),
         "--image",
         str(image),
+        "-sys",
+        VISION_SYSTEM_PROMPT,
         "-p",
         VISUAL_SPEC_PROMPT,
+        "--grammar-file",
+        str(VISUAL_SPEC_GRAMMAR),
         "--no-jinja",
         "--chat-template",
         "smolvlm",
@@ -177,12 +181,12 @@ def build_coder_command(
 
 
 def _strip_stage_logs(text: str) -> str:
-    """Extract the bounded visual specification from mixed CLI output."""
+    """Extract only the bounded visual specification from mixed mtmd CLI output."""
     match = re.search(r"BEGIN_VISUAL_SPEC\s*(.*?)\s*END_VISUAL_SPEC", text, flags=re.DOTALL)
     if not match:
         return ""
     content = match.group(1).strip()
-    # Remove the timestamped mtmd log prefix if a model emits markers on logged lines.
+    # Remove a timestamped mtmd prefix if a model emits markers on logged lines.
     content = re.sub(r"(?m)^\d+\.\d+\.\d+\s+[A-Z]\s+", "", content)
     return content.strip()
 

@@ -49,9 +49,9 @@ def build_command(
     mmproj: Path,
     image: Path,
     question: str,
-    context: int = 2048,
-    batch: int = 8,
-    ubatch: int = 8,
+    context: int = 1024,
+    batch: int = 32,
+    ubatch: int = 32,
     image_max_tokens: int = 64,
 ) -> list[str]:
     """Build the direct, bounded Moondream2 image command."""
@@ -116,9 +116,9 @@ def make_parser() -> argparse.ArgumentParser:
     parser.add_argument("--model", default=str(DEFAULT_MODEL))
     parser.add_argument("--mmproj", default=str(DEFAULT_MMPROJ))
     parser.add_argument("--work-dir", default=str(DEFAULT_WORK_DIR))
-    parser.add_argument("--context", type=int, default=2048)
-    parser.add_argument("--batch", type=int, default=8)
-    parser.add_argument("--ubatch", type=int, default=8)
+    parser.add_argument("--context", type=int, default=1024)
+    parser.add_argument("--batch", type=int, default=32)
+    parser.add_argument("--ubatch", type=int, default=32)
     parser.add_argument("--image-max-tokens", type=int, default=64)
     parser.add_argument("--max-image-edge", type=int, default=512)
     parser.add_argument("--jpeg-quality", type=int, default=70)
@@ -167,7 +167,11 @@ def run(args: argparse.Namespace) -> str:
         )
 
     print(f"Prepared image: {prepared.summary}", flush=True)
-    print("Starting direct Moondream2 image ingestion with a 240-second limit. Wait while media batches advance.", flush=True)
+    print(
+        "Starting direct Moondream2 image ingestion with a 240-second limit. "
+        "This short-question profile uses ctx=1024 and batch/ubatch=32.",
+        flush=True,
+    )
     started = monotonic()
     status, stdout, output = _run_stage(command, args.timeout, log_path, "Moondream2 image stage", live_output=True)
     elapsed = monotonic() - started

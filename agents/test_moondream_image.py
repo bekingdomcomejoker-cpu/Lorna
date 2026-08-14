@@ -26,7 +26,9 @@ class MoondreamImageTests(unittest.TestCase):
         self.assertIn("--no-jinja", command)
         self.assertNotIn("--jinja", command)
         self.assertEqual(command[command.index("--image-max-tokens") + 1], "64")
-        self.assertEqual(command[command.index("-c") + 1], "2048")
+        self.assertEqual(command[command.index("-c") + 1], "1024")
+        self.assertEqual(command[command.index("-b") + 1], "32")
+        self.assertEqual(command[command.index("--ubatch-size") + 1], "32")
         self.assertIn("--no-mmproj-offload", command)
 
     def test_help_makes_no_html_claim(self):

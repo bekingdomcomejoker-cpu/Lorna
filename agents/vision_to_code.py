@@ -191,6 +191,34 @@ def _strip_stage_logs(text: str) -> str:
     return content.strip()
 
 
+def _extract_generated_source(text: str, output_path: Path) -> str:
+    """Recover source emitted on either stream by llama-cli's terminal-oriented build."""
+    source = text.split("SOLUTION:", 1)[-1] if "SOLUTION:" in text else text
+    html_match = re.search(r"<\|im_start\|>html\s*(.*?)\s*<\|im_end\|>", source, flags=re.DOTALL | re.IGNORECASE)
+    css_match = re.search(r"<\|im_start\|>css\s*(.*?)\s*<\|im_end\|>", source, flags=re.DOTALL | re.IGNORECASE)
+    if html_match:
+        html_fragment = html_match.group(1).strip()
+        css = css_match.group(1).strip() if css_match else ""
+        if output_path.suffix.lower() in {".html", ".htm"} and css:
+            return (
+                "<!doctype html>\n<html lang=\"en\">\n<head>\n"
+                "  <meta charset=\"utf-8\">\n"
+                "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n"
+                "  <style>\n" + css + "\n  </style>\n</head>\n<body>\n"
+                + html_fragment + "\n</body>\n</html>\n"
+            )
+        return html_fragment + "\n"
+
+    fenced = re.search(r"```(?:html|\w+)?\s*(.*?)\s*```", source, flags=re.DOTALL | re.IGNORECASE)
+    if fenced:
+        return fenced.group(1).strip() + "\n"
+
+    html_document = re.search(r"(?is)(<!doctype html.*?</html>|<html.*?</html>)", source)
+    if html_document:
+        return html_document.group(1).strip() + "\n"
+    return ""
+
+
 def _run_stage(
     command: list[str], timeout: int, log_path: Path, label: str, live_output: bool = False
 ) -> tuple[int, str, str]:
@@ -388,15 +416,16 @@ def run_pipeline(args: argparse.Namespace) -> str:
             f"Visual spec remains at: {paths.visual_spec}\n"
             f"Coder log: {paths.coder_log}\n\n{_tail(coder_output)}"
         )
-    if not coder_stdout.strip():
+    generated_source = _extract_generated_source(coder_stdout or coder_output, paths.output)
+    if not generated_source:
         return (
-            "DeepSeek-Coder completed without source output. "
+            "DeepSeek-Coder completed but did not emit extractable source code. "
             f"Visual spec remains at: {paths.visual_spec}\n"
             f"Coder log: {paths.coder_log}"
         )
 
     paths.output.parent.mkdir(parents=True, exist_ok=True)
-    paths.output.write_text(coder_stdout.strip() + "\n", encoding="utf-8")
+    paths.output.write_text(generated_source, encoding="utf-8")
     return (
         "Visual-to-code pipeline completed sequentially.\n"
         f"Visual specification: {paths.visual_spec}\n"

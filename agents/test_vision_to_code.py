@@ -52,6 +52,22 @@ class VisionToCodeTests(unittest.TestCase):
             "",
         )
 
+    def test_deepseek_template_output_becomes_self_contained_html(self):
+        raw = """SOLUTION:
+<|im_start|>html
+<div class=\"card\">Hello</div>
+<|im_end|>
+<|im_start|>css
+.card { color: blue; }
+<|im_end|>
+The HTML and CSS code provided above is an example.
+"""
+        result = pipeline._extract_generated_source(raw, Path("/tmp/rebuilt.html"))
+        self.assertIn("<!doctype html>", result.lower())
+        self.assertIn(".card { color: blue; }", result)
+        self.assertIn('<div class="card">Hello</div>', result)
+        self.assertNotIn("The HTML and CSS code", result)
+
     def test_help_command_describes_sequential_memory_safe_behavior(self):
         response = pipeline.command("help")
         self.assertIn("SmolVLM first", response)

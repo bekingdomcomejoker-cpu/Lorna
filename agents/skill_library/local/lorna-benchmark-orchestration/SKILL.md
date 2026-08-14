@@ -10,12 +10,12 @@ Use this workflow to compare local models and runtime configurations without lea
 ## Operating Rules
 
 1. Run **one model process at a time**. Never run parallel benchmarks on the 4 GB phone.
-2. Begin with a small safe matrix: context `512, 1024`; threads `2, 4`; batch `32, 64`; temperature `0.2`.
+2. Begin with the core matrix: context `512, 1024`; generation threads `2, 4`; batch `32, 64`; temperature `0.2`. Only run runtime and sampling profiles after a core candidate exists.
 3. Let the configured token limit complete before `/exit` is consumed. Do not send an exit command mid-response.
 4. Apply a timeout per run. Record timeout, memory deferral, and model-load failures instead of retrying blindly.
 5. Treat `corrupted or incomplete` and `not within the file bounds` as **CORRUPT**. Do not retest that GGUF until it is replaced.
 6. Prefer raw llama.cpp prompt/generation timings. If the runner omits them, calculate generation throughput as `fixed generated tokens ÷ elapsed seconds` and label it **estimated**.
-7. Save every completed run and the best candidate into durable benchmark memory before recommending a setting.
+7. Save every completed configuration and the best speed candidate into durable benchmark memory before recommending a setting. Do not treat sampling speed alone as a quality recommendation.
 
 ## Lorna2 Commands
 
@@ -24,12 +24,15 @@ Use the benchmark command family in agent mode:
 ```text
 benchmark status
 benchmark models
-benchmark sweep qwen
-benchmark sweep smollm
+benchmark profiles
+benchmark sweep qwen core
+benchmark sweep qwen runtime
+benchmark sweep qwen sampling
+benchmark sweep smollm core
 benchmark memory
 ```
 
-`benchmark sweep <model>` runs the eight safe configurations and stores the complete result plus the best candidate in `agents/benchmark_memory.json`.
+`benchmark sweep <model> core` runs the eight safe baseline combinations. `runtime` then varies context, generation threads, prompt/batch threads, logical and physical batch size, KV-cache precision, and flash-attention mode around the current best candidate. `sampling` varies temperature, top-k, top-p, min-p, and repeat penalty while retaining response tails for later quality review. Each completed configuration is retained in `agents/benchmark_memory.json`; reruns resume instead of repeating successful configurations.
 
 ## Recommendation Standard
 

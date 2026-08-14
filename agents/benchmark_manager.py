@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -15,18 +16,26 @@ from pathlib import Path
 from typing import Any
 
 AGENT_DIR = Path(__file__).resolve().parent
-LORNA_DIR = AGENT_DIR.parent
 MEMORY_PATH = AGENT_DIR / "benchmark_memory.json"
 MODELS_DIR = Path.home() / "models"
 DEFAULT_PROMPT = "Explain the convergence of the p-series and relate it to the Riemann zeta function."
-SAFE_SWEEP = {
-    "contexts": [512, 1024],
-    "threads": [2, 4],
-    "batches": [32, 64],
+DEFAULT_CONFIG = {
+    "ctx": 512,
+    "threads": 4,
+    "threads_batch": 4,
+    "batch": 64,
+    "ubatch": 64,
     "temperature": 0.2,
-    "tokens": 100,
-    "timeout_seconds": 120,
+    "top_k": 40,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "repeat_penalty": 1.05,
+    "cache_k": "q4_0",
+    "cache_v": "q4_0",
+    "flash_attn": "auto",
 }
+PROFILE_TOKENS = {"core": 100, "runtime": 80, "sampling": 100}
+PROFILE_TIMEOUT_SECONDS = {"core": 120, "runtime": 120, "sampling": 120}
 
 
 def now_iso() -> str:
@@ -35,7 +44,7 @@ def now_iso() -> str:
 
 def default_memory() -> dict[str, Any]:
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "device": {
             "label": "Redmi 13C / Helio G85 / Termux",
             "ram_mb": 3720,
@@ -43,9 +52,10 @@ def default_memory() -> dict[str, Any]:
         },
         "workflow_rules": [
             "Use only one llama-cli process at a time.",
-            "Let a fixed token budget finish before the queued /exit is consumed.",
+            "Let the fixed token budget finish before queued /exit is consumed.",
             "Abort or skip a run when the model file is corrupt or memory is critically low.",
-            "Use elapsed throughput only when llama.cpp does not emit raw timing lines; label it EST.",
+            "Use elapsed throughput only when llama.cpp does not emit raw timing lines; label it estimated.",
+            "Run staged profiles separately and reuse completed configurations rather than repeating them.",
         ],
         "known_models": {
             "qwen2.5-0.5b-instruct-q4_k_m.gguf": {
@@ -62,6 +72,7 @@ def default_memory() -> dict[str, Any]:
             },
         },
         "runs": [],
+        "completed_configurations": {},
         "recommendations": {},
     }
 
@@ -77,6 +88,7 @@ def load_memory() -> dict[str, Any]:
         memory = default_memory()
     for key, value in default_memory().items():
         memory.setdefault(key, value)
+    memory["schema_version"] = max(2, int(memory.get("schema_version", 1)))
     return memory
 
 
@@ -117,7 +129,10 @@ def swap_used_mb() -> int:
 def discover_models() -> list[Path]:
     if not MODELS_DIR.is_dir():
         return []
-    return sorted(path for path in MODELS_DIR.glob("*.gguf") if path.stat().st_size > 50 * 1024 * 1024)
+    return sorted(
+        path for path in MODELS_DIR.glob("*.gguf")
+        if path.stat().st_size > 50 * 1024 * 1024 and "mmproj" not in path.name.lower()
+    )
 
 
 def resolve_model(query: str) -> Path | None:
@@ -143,6 +158,21 @@ def llama_binary() -> str | None:
     return shutil.which("llama-cli")
 
 
+def llama_help() -> str:
+    binary = llama_binary()
+    if not binary:
+        return ""
+    try:
+        completed = subprocess.run([binary, "--help"], capture_output=True, text=True, timeout=10)
+        return (completed.stdout or "") + (completed.stderr or "")
+    except (OSError, subprocess.SubprocessError):
+        return ""
+
+
+def supported_flag(help_text: str, flag: str) -> bool:
+    return flag in help_text
+
+
 def parse_raw_tps(text: str) -> tuple[str | None, str | None]:
     prompt = re.findall(r"Prompt:\s*([0-9]+(?:\.[0-9]+)?)\s*t/s", text, flags=re.I)
     generation = re.findall(r"Generation:\s*([0-9]+(?:\.[0-9]+)?)\s*t/s", text, flags=re.I)
@@ -162,18 +192,118 @@ def classify_failure(text: str, returncode: int) -> str:
     return f"ERROR({returncode})"
 
 
-def run_configuration(model: Path, ctx: int, threads: int, batch: int, temperature: float) -> dict[str, Any]:
+def baseline_config(memory: dict[str, Any], model_name: str) -> dict[str, Any]:
+    config = dict(DEFAULT_CONFIG)
+    recommendation = memory.get("recommendations", {}).get(model_name, {})
+    config.update(recommendation.get("config", {}))
+    config.setdefault("threads_batch", config.get("threads", 4))
+    config.setdefault("ubatch", min(config.get("batch", 64), 64))
+    return config
+
+
+def profile_configurations(profile: str, base: dict[str, Any]) -> list[dict[str, Any]]:
+    """Create a one-variable-at-a-time matrix around the current best candidate."""
+    configs: list[dict[str, Any]] = []
+    seen: set[str] = set()
+
+    def add(label: str, **changes: Any) -> None:
+        config = dict(base)
+        config.update(changes)
+        fingerprint = json.dumps(config, sort_keys=True)
+        if fingerprint in seen:
+            return
+        seen.add(fingerprint)
+        config["label"] = label
+        configs.append(config)
+
+    if profile == "core":
+        for ctx in (512, 1024):
+            for threads in (2, 4):
+                for batch in (32, 64):
+                    add(f"core ctx={ctx} t={threads} b={batch}", ctx=ctx, threads=threads,
+                        threads_batch=threads, batch=batch, ubatch=min(batch, 64), temperature=0.2)
+    elif profile == "runtime":
+        add("baseline")
+        for ctx in (256, 384, 768, 1024, 1536):
+            add(f"ctx={ctx}", ctx=ctx)
+        for threads in (1, 2, 3, 4):
+            add(f"threads={threads}", threads=threads, threads_batch=threads)
+        for threads_batch in (1, 2, 3, 4):
+            add(f"threads_batch={threads_batch}", threads_batch=threads_batch)
+        for batch, ubatch in ((16, 16), (32, 32), (64, 64), (96, 64), (128, 64)):
+            add(f"batch={batch} ubatch={ubatch}", batch=batch, ubatch=ubatch)
+        for cache_k, cache_v in (("q8_0", "q8_0"), ("f16", "f16")):
+            add(f"cache_k={cache_k} cache_v={cache_v}", cache_k=cache_k, cache_v=cache_v)
+        for flash_attn in ("off", "auto"):
+            add(f"flash_attn={flash_attn}", flash_attn=flash_attn)
+    elif profile == "sampling":
+        add("sampling baseline")
+        for temperature in (0.0, 0.1, 0.2, 0.4, 0.7):
+            add(f"temperature={temperature}", temperature=temperature)
+        for top_k in (20, 40, 80):
+            add(f"top_k={top_k}", top_k=top_k)
+        for top_p in (0.80, 0.90, 0.95):
+            add(f"top_p={top_p}", top_p=top_p)
+        for min_p in (0.0, 0.05, 0.10):
+            add(f"min_p={min_p}", min_p=min_p)
+        for repeat_penalty in (1.0, 1.05, 1.10):
+            add(f"repeat_penalty={repeat_penalty}", repeat_penalty=repeat_penalty)
+    else:
+        raise ValueError(f"Unknown profile: {profile}")
+    return configs
+
+
+def configuration_key(model_name: str, profile: str, config: dict[str, Any]) -> str:
+    canonical = {key: value for key, value in config.items() if key != "label"}
+    digest = hashlib.sha256(json.dumps(canonical, sort_keys=True).encode()).hexdigest()[:16]
+    return f"{model_name}|{profile}|{digest}"
+
+
+def config_summary(config: dict[str, Any]) -> str:
+    return (
+        f"ctx={config.get('ctx')} t={config.get('threads')}/{config.get('threads_batch')} "
+        f"b={config.get('batch')}/{config.get('ubatch')} temp={config.get('temperature')} "
+        f"k={config.get('top_k')} p={config.get('top_p')} min_p={config.get('min_p')} "
+        f"rep={config.get('repeat_penalty')} cache={config.get('cache_k')}/{config.get('cache_v')} "
+        f"fa={config.get('flash_attn')}"
+    )
+
+
+def build_command(binary: str, model: Path, prompt_file: Path, config: dict[str, Any], tokens: int, help_text: str) -> list[str]:
+    command = [
+        binary, "-m", str(model), "-f", str(prompt_file), "-n", str(tokens),
+        "-c", str(config["ctx"]), "-t", str(config["threads"]),
+        "-b", str(config["batch"]), "--temp", str(config["temperature"]),
+        "--no-display-prompt", "--perf",
+    ]
+    if supported_flag(help_text, "--threads-batch"):
+        command.extend(["--threads-batch", str(config["threads_batch"])])
+    if supported_flag(help_text, "--ubatch-size"):
+        command.extend(["--ubatch-size", str(config["ubatch"])])
+    if supported_flag(help_text, "--top-k"):
+        command.extend(["--top-k", str(config["top_k"])])
+    if supported_flag(help_text, "--top-p"):
+        command.extend(["--top-p", str(config["top_p"])])
+    if supported_flag(help_text, "--min-p"):
+        command.extend(["--min-p", str(config["min_p"])])
+    if supported_flag(help_text, "--repeat-penalty"):
+        command.extend(["--repeat-penalty", str(config["repeat_penalty"])])
+    if supported_flag(help_text, "--cache-type-k"):
+        command.extend(["--cache-type-k", str(config["cache_k"]), "--cache-type-v", str(config["cache_v"])])
+    if supported_flag(help_text, "--flash-attn"):
+        command.extend(["--flash-attn", str(config["flash_attn"])])
+    return command
+
+
+def run_configuration(model: Path, config: dict[str, Any], profile: str, help_text: str) -> dict[str, Any]:
     binary = llama_binary()
     if not binary:
         return {"status": "ERROR(no_llama_cli)"}
+    tokens = PROFILE_TOKENS[profile]
     with tempfile.TemporaryDirectory(prefix="lorna2_benchmark_") as temp_dir:
         prompt_file = Path(temp_dir) / "prompt.txt"
         prompt_file.write_text(DEFAULT_PROMPT + "\n", encoding="utf-8")
-        command = [
-            binary, "-m", str(model), "-f", str(prompt_file), "-n", str(SAFE_SWEEP["tokens"]),
-            "-c", str(ctx), "-t", str(threads), "-b", str(batch), "--temp", str(temperature),
-            "--no-display-prompt", "--perf",
-        ]
+        command = build_command(binary, model, prompt_file, config, tokens, help_text)
         started = time.monotonic()
         try:
             completed = subprocess.run(
@@ -181,7 +311,7 @@ def run_configuration(model: Path, ctx: int, threads: int, batch: int, temperatu
                 input="/exit\n",
                 text=True,
                 capture_output=True,
-                timeout=SAFE_SWEEP["timeout_seconds"],
+                timeout=PROFILE_TIMEOUT_SECONDS[profile],
             )
             returncode = completed.returncode
             output = (completed.stdout or "") + "\n" + (completed.stderr or "")
@@ -198,58 +328,65 @@ def run_configuration(model: Path, ctx: int, threads: int, batch: int, temperatu
         }
 
     prompt_tps, generation_tps = parse_raw_tps(output)
-    generation_source = "raw"
+    source = "raw"
     if generation_tps is None:
-        generation_tps = f"{SAFE_SWEEP['tokens'] / elapsed_s:.2f}"
-        generation_source = "estimated"
+        generation_tps = f"{tokens / elapsed_s:.2f}"
+        source = "estimated"
     return {
         "status": "OK",
         "elapsed_seconds": round(elapsed_s, 3),
         "prompt_tps": prompt_tps or "?",
         "generation_tps": generation_tps,
-        "generation_source": generation_source,
+        "generation_source": source,
         "output_tail": output[-1200:],
     }
 
 
-def run_sweep(model_query: str) -> str:
+def run_sweep(model_query: str, profile: str = "core") -> str:
     model = resolve_model(model_query)
     if model is None:
         return "Unknown model. Use `benchmark models` to list selectable model names."
+    if profile not in {"core", "runtime", "sampling"}:
+        return "Profile must be core, runtime, or sampling."
 
     memory = load_memory()
     known = memory["known_models"].get(model.name, {})
     if known.get("status") == "corrupt":
         return f"{model.name} is recorded as CORRUPT. Replace the GGUF before tuning it."
 
-    available, total = memory_mb()
+    available, _ = memory_mb()
     swap = swap_used_mb()
     if available < 550:
         return f"Benchmark deferred: only {available}MB RAM available ({swap}MB swap used). Free memory, then retry."
 
-    configurations = [
-        {"ctx": ctx, "threads": threads, "batch": batch, "temperature": SAFE_SWEEP["temperature"]}
-        for ctx in SAFE_SWEEP["contexts"]
-        for threads in SAFE_SWEEP["threads"]
-        for batch in SAFE_SWEEP["batches"]
-    ]
+    base = baseline_config(memory, model.name)
+    configurations = profile_configurations(profile, base)
+    help_text = llama_help()
     run = {
-        "id": f"sweep-{int(time.time())}",
+        "id": f"{profile}-{int(time.time())}",
         "timestamp": now_iso(),
+        "profile": profile,
         "model": model.name,
         "model_bytes": model.stat().st_size,
         "memory_before_mb": available,
         "swap_used_before_mb": swap,
         "prompt": DEFAULT_PROMPT,
+        "base_config": base,
         "configurations": [],
     }
 
     for index, config in enumerate(configurations, start=1):
-        available, _ = memory_mb()
-        if available < 500:
-            entry = {**config, "status": "SKIPPED_LOW_MEMORY", "sequence": index}
+        key = configuration_key(model.name, profile, config)
+        prior = memory["completed_configurations"].get(key)
+        if prior and prior.get("status") == "OK":
+            entry = {**config, **prior, "sequence": index, "reused": True}
         else:
-            entry = {**config, "sequence": index, **run_configuration(model, **config)}
+            available, _ = memory_mb()
+            if available < 500:
+                entry = {**config, "status": "SKIPPED_LOW_MEMORY", "sequence": index}
+            else:
+                entry = {**config, "sequence": index, **run_configuration(model, config, profile, help_text)}
+            memory["completed_configurations"][key] = {k: v for k, v in entry.items() if k != "sequence"}
         run["configurations"].append(entry)
         if entry.get("status") == "CORRUPT":
             memory["known_models"][model.name] = {
@@ -257,6 +394,7 @@ def run_sweep(model_query: str) -> str:
                 "notes": "Detected by Lorna2 benchmark manager; llama.cpp reported model corruption.",
             }
             break
+        save_memory(memory)
 
     successful = [
         row for row in run["configurations"]
@@ -265,41 +403,44 @@ def run_sweep(model_query: str) -> str:
     if successful:
         best = max(successful, key=lambda row: float(row["generation_tps"]))
         run["best"] = best
-        memory["recommendations"][model.name] = {
-            "timestamp": now_iso(),
-            "config": {key: best[key] for key in ("ctx", "threads", "batch", "temperature")},
-            "generation_tps": best["generation_tps"],
-            "generation_source": best.get("generation_source", "raw"),
-            "status": "candidate",
-        }
+        if profile in {"core", "runtime"}:
+            memory["recommendations"][model.name] = {
+                "timestamp": now_iso(),
+                "profile": profile,
+                "config": {key: best[key] for key in DEFAULT_CONFIG},
+                "generation_tps": best["generation_tps"],
+                "generation_source": best.get("generation_source", "raw"),
+                "status": "candidate",
+            }
     else:
         run["best"] = None
 
     memory["runs"].append(run)
-    memory["runs"] = memory["runs"][-20:]
+    memory["runs"] = memory["runs"][-30:]
+    if len(memory["completed_configurations"]) > 250:
+        keys = list(memory["completed_configurations"])[-250:]
+        memory["completed_configurations"] = {key: memory["completed_configurations"][key] for key in keys}
     save_memory(memory)
     return format_run(run)
 
 
 def format_run(run: dict[str, Any]) -> str:
     lines = [
-        f"Lorna2 sweep: {run['model']}",
+        f"Lorna2 {run['profile']} sweep: {run['model']}",
         f"Memory before: {run['memory_before_mb']}MB RAM available; {run['swap_used_before_mb']}MB swap used.",
-        "ctx | threads | batch | temp | gen t/s | source | status",
+        "# | configuration | gen t/s | source | status",
     ]
     for row in run["configurations"]:
+        reused = " reused" if row.get("reused") else ""
         lines.append(
-            f"{row.get('ctx', '?'):>4} | {row.get('threads', '?'):>7} | {row.get('batch', '?'):>5} | "
-            f"{row.get('temperature', '?'):>4} | {str(row.get('generation_tps', '?')):>7} | "
-            f"{row.get('generation_source', '-'):>9} | {row.get('status', '?')}"
+            f"{row.get('sequence', '?'):>2} | {row.get('label', config_summary(row))} | "
+            f"{str(row.get('generation_tps', '?')):>7} | {row.get('generation_source', '-'):>9} | "
+            f"{row.get('status', '?')}{reused}"
         )
     best = run.get("best")
     if best:
         source = "measured" if best.get("generation_source") == "raw" else "elapsed estimate"
-        lines.append(
-            f"Best candidate: ctx={best['ctx']} threads={best['threads']} batch={best['batch']} "
-            f"temp={best['temperature']} at {best['generation_tps']} t/s ({source})."
-        )
+        lines.append(f"Best {run['profile']} candidate: {config_summary(best)} at {best['generation_tps']} t/s ({source}).")
     else:
         lines.append("No usable configuration was recorded.")
     return "\n".join(lines)
@@ -318,32 +459,43 @@ def memory_report() -> str:
     memory = load_memory()
     lines = ["Lorna2 benchmark memory:"]
     for model, recommendation in memory.get("recommendations", {}).items():
-        config = recommendation.get("config", {})
         lines.append(
-            f"  {model}: ctx={config.get('ctx')} threads={config.get('threads')} "
-            f"batch={config.get('batch')} temp={config.get('temperature')} — "
+            f"  {model} [{recommendation.get('profile', 'core')}]: {config_summary(recommendation.get('config', {}))} — "
             f"{recommendation.get('generation_tps')} t/s ({recommendation.get('generation_source')})"
         )
+    lines.append(f"  Retained completed configurations: {len(memory.get('completed_configurations', {}))}")
     if not memory.get("recommendations"):
         lines.append("  No completed sweep recommendations yet.")
     return "\n".join(lines)
 
 
+def profile_report() -> str:
+    return (
+        "Benchmark profiles:\n"
+        "  core     8 baseline combinations: ctx, generation threads, batch.\n"
+        "  runtime  runtime parameters around the current best: ctx, generation/batch threads, batch, ubatch, KV cache, flash attention.\n"
+        "  sampling sampling parameters: temperature, top-k, top-p, min-p, repeat penalty.\n"
+        "Profiles resume completed configurations from benchmark memory. Run one profile at a time."
+    )
+
+
 def command(command_text: str) -> str:
-    parts = command_text.strip().split(maxsplit=1)
+    parts = command_text.strip().split()
     action = parts[0].lower() if parts else "help"
-    argument = parts[1].strip() if len(parts) > 1 else ""
     if action in {"help", ""}:
         return (
             "Benchmark commands:\n"
-            "  benchmark models              list local GGUF candidates\n"
-            "  benchmark sweep qwen          run 8 safe Qwen configurations\n"
-            "  benchmark sweep smollm        run 8 safe SmolLM configurations\n"
-            "  benchmark memory              show retained benchmark recommendations\n"
-            "  benchmark status              show RAM, swap, and runner availability"
+            "  benchmark status                         show RAM, swap, runner availability\n"
+            "  benchmark models                         list local GGUF candidates\n"
+            "  benchmark profiles                       describe staged parameter profiles\n"
+            "  benchmark sweep qwen [core|runtime|sampling]\n"
+            "  benchmark sweep smollm [core|runtime|sampling]\n"
+            "  benchmark memory                         show retained benchmark recommendations"
         )
     if action == "models":
         return models_report()
+    if action == "profiles":
+        return profile_report()
     if action == "memory":
         return memory_report()
     if action == "status":
@@ -351,7 +503,9 @@ def command(command_text: str) -> str:
         binary = llama_binary() or "not found"
         return f"RAM available: {available}/{total}MB; swap used: {swap_used_mb()}MB; llama-cli: {binary}"
     if action == "sweep":
-        return run_sweep(argument)
+        if len(parts) < 2:
+            return "Usage: benchmark sweep <qwen|smollm> [core|runtime|sampling]"
+        return run_sweep(parts[1], parts[2].lower() if len(parts) > 2 else "core")
     return "Unknown benchmark action. Use `benchmark help`."
 
 

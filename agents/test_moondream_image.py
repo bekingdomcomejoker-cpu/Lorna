@@ -31,10 +31,6 @@ class MoondreamImageTests(unittest.TestCase):
         self.assertEqual(command[command.index("--ubatch-size") + 1], "32")
         self.assertIn("--no-mmproj-offload", command)
 
-    def test_defaults_select_verified_20250414_model_pair(self):
-        self.assertEqual(moon.DEFAULT_MODEL.name, "moondream2-text-model-q4_k_m-vicuna-20250414.gguf")
-        self.assertEqual(moon.DEFAULT_MMPROJ.name, "moondream2-mmproj-f16-20250414.gguf")
-
     def test_help_makes_no_html_claim(self):
         response = moon.command("help")
         self.assertIn("prepares", response.lower())

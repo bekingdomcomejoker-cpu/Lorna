@@ -16,6 +16,7 @@ import json
 import os
 from typing import Any
 
+import httpx2
 import ollama
 from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
@@ -26,6 +27,14 @@ DEFAULT_MCP_URL = "http://homeassistant:8123/api/mcp"
 def _headers() -> dict[str, str]:
     token = os.environ.get("LORNA_HA_TOKEN", "").strip()
     return {"Authorization": f"Bearer {token}"} if token else {}
+
+
+def _http_client(timeout: float) -> httpx2.AsyncClient:
+    return httpx2.AsyncClient(
+        headers=_headers(),
+        follow_redirects=True,
+        timeout=httpx2.Timeout(timeout, read=timeout),
+    )
 
 
 def _mcp_tool_to_ollama(tool: Any) -> dict[str, Any]:
@@ -67,47 +76,43 @@ async def _run(user_input: str, model: str, system_prompt: str | None = None) ->
     url = os.environ.get("LORNA_HA_MCP_URL", DEFAULT_MCP_URL).strip()
     timeout = float(os.environ.get("LORNA_MCP_TIMEOUT", "30"))
 
-    async with streamable_http_client(url=url, headers=_headers(), timeout=timeout) as (read, write, _):
-        async with ClientSession(read, write) as session:
-            await session.initialize()
-            listed = await session.list_tools()
-            tools = [_mcp_tool_to_ollama(t) for t in listed.tools]
+    async with _http_client(timeout) as http_client:
+        async with streamable_http_client(url=url, http_client=http_client) as (read, write, _):
+            async with ClientSession(read, write) as session:
+                await session.initialize()
+                listed = await session.list_tools()
+                tools = [_mcp_tool_to_ollama(t) for t in listed.tools]
 
-            messages: list[dict[str, Any]] = []
-            if system_prompt:
-                messages.append({"role": "system", "content": system_prompt})
-            messages.append({"role": "user", "content": user_input})
+                messages: list[dict[str, Any]] = []
+                if system_prompt:
+                    messages.append({"role": "system", "content": system_prompt})
+                messages.append({"role": "user", "content": user_input})
 
-            # Give Ollama the MCP tool schemas. The model may request one or
-            # more calls; feed results back until it produces a normal answer.
-            for _ in range(8):
-                response = ollama.chat(model=model, messages=messages, tools=tools or None)
-                message = response.get("message", {})
-                tool_calls = message.get("tool_calls") or []
-                if not tool_calls:
-                    return message.get("content", "")
+                for _ in range(8):
+                    response = ollama.chat(model=model, messages=messages, tools=tools or None)
+                    message = response.get("message", {})
+                    tool_calls = message.get("tool_calls") or []
+                    if not tool_calls:
+                        return message.get("content", "")
 
-                messages.append(message)
-                for call in tool_calls:
-                    function = call.get("function", {})
-                    name = function.get("name", "")
-                    arguments = function.get("arguments", {})
-                    if isinstance(arguments, str):
+                    messages.append(message)
+                    for call in tool_calls:
+                        function = call.get("function", {})
+                        name = function.get("name", "")
+                        arguments = function.get("arguments", {})
+                        if isinstance(arguments, str):
+                            try:
+                                arguments = json.loads(arguments)
+                            except json.JSONDecodeError:
+                                arguments = {"input": arguments}
                         try:
-                            arguments = json.loads(arguments)
-                        except json.JSONDecodeError:
-                            arguments = {"input": arguments}
-                    try:
-                        result = await session.call_tool(name, arguments=arguments)
-                        content = _content_to_text(result)
-                    except Exception as exc:
-                        content = f"MCP tool call failed: {type(exc).__name__}: {exc}"
-                    messages.append({
-                        "role": "tool",
-                        "content": content,
-                    })
+                            result = await session.call_tool(name, arguments=arguments)
+                            content = _content_to_text(result)
+                        except Exception as exc:
+                            content = f"MCP tool call failed: {type(exc).__name__}: {exc}"
+                        messages.append({"role": "tool", "content": content})
 
-            return "MCP tool loop exceeded 8 rounds; stopping safely."
+                return "MCP tool loop exceeded 8 rounds; stopping safely."
 
 
 def chat_with_mcp(user_input: str, model: str, system_prompt: str | None = None) -> str:
@@ -123,12 +128,13 @@ def mcp_status() -> str:
     async def _status() -> str:
         url = os.environ.get("LORNA_HA_MCP_URL", DEFAULT_MCP_URL).strip()
         timeout = float(os.environ.get("LORNA_MCP_TIMEOUT", "10"))
-        async with streamable_http_client(url=url, headers=_headers(), timeout=timeout) as (read, write, _):
-            async with ClientSession(read, write) as session:
-                await session.initialize()
-                result = await session.list_tools()
-                names = [t.name for t in result.tools]
-                return f"Connected to {url}\nMCP tools: {len(names)}\n" + "\n".join(f"  - {n}" for n in names)
+        async with _http_client(timeout) as http_client:
+            async with streamable_http_client(url=url, http_client=http_client) as (read, write, _):
+                async with ClientSession(read, write) as session:
+                    await session.initialize()
+                    result = await session.list_tools()
+                    names = [t.name for t in result.tools]
+                    return f"Connected to {url}\nMCP tools: {len(names)}\n" + "\n".join(f"  - {n}" for n in names)
 
     try:
         return asyncio.run(_status())
